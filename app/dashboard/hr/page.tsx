@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import {
@@ -27,9 +28,22 @@ import {
   Clock,
   TrendingUp,
 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { User, Shield, Crown } from "lucide-react"
 
 export default function HRDashboard() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [employees, setEmployees] = useState<any[]>([])
+  const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false)
+  const [newEmployee, setNewEmployee] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    role: "employee" as "employee" | "hr" | "admin",
+    password: "",
+    confirmPassword: "",
+  })
+  const [employeeError, setEmployeeError] = useState("")
   const [requests, setRequests] = useState<any[]>([])
   const [token, setToken] = useState<string | null>(null)
   const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
@@ -50,6 +64,31 @@ export default function HRDashboard() {
     other: "другое",
   }
   const [hourStats, setHourStats] = useState<{ currentMonthHours: number; difference: number } | null>(null)
+    const getRoleIcon = (userRole: "employee" | "hr" | "admin") => {
+    switch (userRole) {
+      case "employee":
+        return <User className="w-5 h-5 text-green-600" />
+      case "hr":
+        return <Users className="w-5 h-5 text-purple-600" />
+      case "admin":
+        return <Crown className="w-5 h-5 text-orange-600" />
+      default:
+        return <User className="w-5 h-5 text-gray-600" />
+    }
+  }
+    // Get role background color
+  const getRoleBackgroundColor = (userRole: "employee" | "hr" | "admin") => {
+    switch (userRole) {
+      case "employee":
+        return "bg-green-100"
+      case "hr":
+        return "bg-purple-100"
+      case "admin":
+        return "bg-orange-100"
+      default:
+        return "bg-gray-100"
+    }
+  }
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token")
@@ -113,6 +152,7 @@ export default function HRDashboard() {
       const res = await fetch("/api/hr/employees")
       if (!res.ok) throw new Error("Ошибка получения сотрудников")
       const data = await res.json()
+      setEmployees(data)
 
       const now = new Date()
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -127,6 +167,80 @@ export default function HRDashboard() {
 
   fetchEmployees()
 }, [])
+   // Validate new employee form
+  const validateEmployee = () => {
+    if (!newEmployee.firstName.trim()) {
+      setEmployeeError("Введите имя")
+      return false
+    }
+    if (!newEmployee.lastName.trim()) {
+      setEmployeeError("Введите фамилию")
+      return false
+    }
+    if (!newEmployee.email.trim()) {
+      setEmployeeError("Введите email")
+      return false
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmployee.email)) {
+      setEmployeeError("Введите корректный email")
+      return false
+    }
+    if (!newEmployee.password) {
+      setEmployeeError("Введите пароль")
+      return false
+    }
+    if (newEmployee.password.length < 6) {
+      setEmployeeError("Пароль должен содержать минимум 6 символов")
+      return false
+    }
+    if (newEmployee.password !== newEmployee.confirmPassword) {
+      setEmployeeError("Пароли не совпадают")
+      return false
+    }
+    return true
+  }
+
+  // Handle employee creation
+  const handleCreateEmployee = async () => {
+    if (!validateEmployee()) return
+
+    try {
+      const res = await fetch("/api/hr/employees", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          firstName: newEmployee.firstName,
+          lastName: newEmployee.lastName,
+          email: newEmployee.email,
+          role: newEmployee.role,
+          password: newEmployee.password,
+        }),
+      })
+
+      if (res.ok) {
+        setIsAddEmployeeDialogOpen(false)
+        setNewEmployee({
+          firstName: "",
+          lastName: "",
+          email: "",
+          role: "employee",
+          password: "",
+          confirmPassword: "",
+        })
+        setEmployeeError("")
+        // Refresh employees list or show success message
+      } else {
+        const error = await res.json()
+        setEmployeeError(error.message || "Ошибка при создании сотрудника")
+      }
+    } catch (error) {
+      setEmployeeError("Ошибка при создании сотрудника")
+    }
+  }
+
   const pendingCount = requests.filter((req) => req.status === "pending").length
   const updateRequestStatus = async (id: number, status: "approved" | "rejected") => {
     const res = await fetch(`/api/hr/requests/${id}/status`, {
@@ -150,20 +264,27 @@ export default function HRDashboard() {
     await updateRequestStatus(confirmDialog.requestId, confirmDialog.action)
     setConfirmDialog({ isOpen: false, requestId: null, action: null })
   }
-  const employees = [
-    { id: 1, name: "Иванов И.И.", position: "Разработчик", department: "IT", status: "Активен", hoursMonth: 168 },
-    { id: 2, name: "Петрова А.С.", position: "Дизайнер", department: "Дизайн", status: "Активен", hoursMonth: 160 },
-    {
-      id: 3,
-      name: "Сидоров П.П.",
-      position: "Аналитик",
-      department: "Аналитика",
-      status: "В отпуске",
-      hoursMonth: 120,
-    },
-    { id: 4, name: "Козлова М.В.", position: "Менеджер", department: "Продажи", status: "Активен", hoursMonth: 172 },
-  ]
+    // Filter employees based on search term
+  const filteredEmployees = employees.filter(
+    (employee) =>
+      employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.email.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const res = await fetch("/api/hr/employees")
+        if (!res.ok) throw new Error("Ошибка получения сотрудников")
+        const data = await res.json()
+        setEmployees(data)
+      } catch (error) {
+        console.error(error)
+      }
+    }
 
+    fetchEmployees()
+  }, [])
   const reports = [
     { name: "Отчет по рабочему времени", description: "Январь 2024", date: "31.01.2024", type: "Время" },
     { name: "Отчет по отпускам", description: "Квартальный отчет", date: "31.12.2023", type: "Отпуска" },
@@ -273,7 +394,20 @@ export default function HRDashboard() {
                     <CardTitle>Управление сотрудниками</CardTitle>
                     <CardDescription>Список всех сотрудников и их информация</CardDescription>
                   </div>
-                  <Button>
+                  <Button
+                    onClick={() => {
+                      setIsAddEmployeeDialogOpen(true)
+                      setNewEmployee({
+                        firstName: "",
+                        lastName: "",
+                        email: "",
+                        role: "employee",
+                        password: "",
+                        confirmPassword: "",
+                      })
+                      setEmployeeError("")
+                    }}
+                  >
                     <UserPlus className="w-4 h-4 mr-2" />
                     Добавить сотрудника
                   </Button>
@@ -296,22 +430,19 @@ export default function HRDashboard() {
                   </Button>
                 </div>
 
-                <div className="space-y-4">
+                {/* <div className="space-y-4">
                   {employees.map((employee) => (
                     <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center space-x-4">
                         <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
                           <span className="text-sm font-medium">
-                            {employee.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
+                            {`${employee.lastName} ${employee.firstName[0]}.`}
                           </span>
                         </div>
                         <div>
                           <p className="font-medium">{employee.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {employee.position} • {employee.department}
+                            {employee.role}
                           </p>
                         </div>
                       </div>
@@ -320,7 +451,71 @@ export default function HRDashboard() {
                           <p className="text-sm font-medium">{employee.hoursMonth}ч</p>
                           <p className="text-xs text-muted-foreground">за месяц</p>
                         </div>
-                        <Badge variant={employee.status === "Активен" ? "default" : "secondary"}>
+                        <Badge
+                            variant={
+                              employee.status === "Активен"
+                                ? "default"
+                                : employee.status === "В отпуске"
+                                ? "secondary"
+                                : employee.status === "На больничном"
+                                ? "outline"
+                                : "destructive"
+                            }
+                          >
+                            {employee.status}
+                          </Badge>
+                        <Button variant="outline" size="sm">
+                          Подробнее
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent> */}
+           <div className="space-y-4">
+                  {filteredEmployees.map((employee) => (
+                    <div
+                      key={employee.id}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div
+                          className={`w-12 h-12 ${getRoleBackgroundColor(employee.role)} rounded-full flex items-center justify-center`}
+                        >
+                          {getRoleIcon(employee.userRole)}
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <p className="font-medium text-lg">{employee.firstName} {employee.lastName}</p>
+                            <Badge variant="outline" className="text-xs">
+                              {employee.role === "employee"
+                                ? "Сотрудник"
+                                : employee.role === "hr"
+                                  ? "HR"
+                                  : "Админ"}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{employee.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <p className="text-sm font-medium">{employee.hoursMonth}ч</p>
+                          <p className="text-xs text-muted-foreground">за месяц</p>
+                        </div>
+                        <Badge
+                          variant={
+                            employee.status === "Активен"
+                              ? "default"
+                              : employee.status === "В отпуске"
+                                ? "secondary"
+                                : employee.status === "На больничном"
+                                  ? "outline"
+                                  : "destructive"
+                          }
+                        >
                           {employee.status}
                         </Badge>
                         <Button variant="outline" size="sm">
@@ -330,6 +525,12 @@ export default function HRDashboard() {
                     </div>
                   ))}
                 </div>
+
+                {filteredEmployees.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Сотрудники не найдены</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -461,6 +662,130 @@ export default function HRDashboard() {
             >
               Подтвердить
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+       {/* Add Employee Dialog */}
+      <Dialog open={isAddEmployeeDialogOpen} onOpenChange={setIsAddEmployeeDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Добавить нового сотрудника</DialogTitle>
+            <DialogDescription>Заполните информацию о новом сотруднике</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="firstName">Имя</Label>
+                <Input
+                  id="firstName"
+                  value={newEmployee.firstName}
+                  onChange={(e) => {
+                    setNewEmployee({ ...newEmployee, firstName: e.target.value })
+                    setEmployeeError("")
+                  }}
+                  placeholder="Введите имя"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="lastName">Фамилия</Label>
+                <Input
+                  id="lastName"
+                  value={newEmployee.lastName}
+                  onChange={(e) => {
+                    setNewEmployee({ ...newEmployee, lastName: e.target.value })
+                    setEmployeeError("")
+                  }}
+                  placeholder="Введите фамилию"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={newEmployee.email}
+                onChange={(e) => {
+                  setNewEmployee({ ...newEmployee, email: e.target.value })
+                  setEmployeeError("")
+                }}
+                placeholder="Введите email"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="role">Роль в системе</Label>
+              <Select
+                value={newEmployee.role}
+                onValueChange={(value: "employee" | "hr" | "admin") => {
+                  setNewEmployee({ ...newEmployee, role: value })
+                  setEmployeeError("")
+                }}
+              >
+                <SelectTrigger id="role">
+                  <SelectValue placeholder="Выберите роль" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="employee">
+                    <div className="flex items-center space-x-2">
+                      <User className="w-4 h-4 text-green-600" />
+                      <span>Сотрудник</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="hr">
+                    <div className="flex items-center space-x-2">
+                      <Users className="w-4 h-4 text-purple-600" />
+                      <span>HR-менеджер</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="admin">
+                    <div className="flex items-center space-x-2">
+                      <Crown className="w-4 h-4 text-orange-600" />
+                      <span>Администратор</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="password">Пароль</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={newEmployee.password}
+                  onChange={(e) => {
+                    setNewEmployee({ ...newEmployee, password: e.target.value })
+                    setEmployeeError("")
+                  }}
+                  placeholder="Введите пароль"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={newEmployee.confirmPassword}
+                  onChange={(e) => {
+                    setNewEmployee({ ...newEmployee, confirmPassword: e.target.value })
+                    setEmployeeError("")
+                  }}
+                  placeholder="Повторите пароль"
+                />
+              </div>
+            </div>
+
+            {employeeError && <p className="text-sm text-red-600">{employeeError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddEmployeeDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleCreateEmployee}>Создать сотрудника</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
