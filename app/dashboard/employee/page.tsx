@@ -29,6 +29,7 @@ type ScheduleFromAPI = {
 
 export default function EmployeeDashboard() {
   const [date, setDate] = useState<Date | undefined>(new Date())
+  const [token, setToken] = useState<string | null>(null)
   const [shifts, setShifts] = useState<{
     [date: string]: { startTime: string; endTime: string; hours: number }}>({})
   const [newShift, setNewShift] = useState({
@@ -37,7 +38,6 @@ export default function EmployeeDashboard() {
     endTime: "18:00",
   })
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-
   // Calculate total hours for the current month
   const calculateTotalHours = () => {
   const currentMonth = new Date().getMonth()
@@ -53,10 +53,19 @@ export default function EmployeeDashboard() {
   const minutes = Math.round((totalHours - hours) * 60)
   return `${hours}:${minutes.toString().padStart(2, "0")}`
 }
-
 useEffect(() => {
+  const stored = localStorage.getItem("token")
+  if (stored) setToken(stored)
+}, [])
+useEffect(() => {
+  const token = localStorage.getItem("token")
+  if (!token) return
   const fetchShifts = async () => {
-    const res = await fetch("/api/schedules?employeeId=1") // Подставить актуального пользователя
+    const res = await fetch("/api/schedules", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
 
     if (!res.ok) {
       console.error("Ошибка загрузки смен")
@@ -122,14 +131,15 @@ const formatDate = (date: Date): string => {
   const formattedDate = formatDate(newShift.date)
 
   const res = await fetch("/api/schedules", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  },
+   body: JSON.stringify({
       date: formattedDate,
       startTime: newShift.startTime,
-      endTime: newShift.endTime,
-      employeeId: 1, // 👈 Здесь пока захардкожен, позже заменим на текущего пользователя
-    }),
+      endTime: newShift.endTime, }),
   })
 
   if (res.ok) {
@@ -200,7 +210,14 @@ const formatDate = (date: Date): string => {
                 <p className="text-sm text-gray-500">Добро пожаловать, Иванов И.И.</p>
               </div>
             </div>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                localStorage.removeItem("token")
+                window.location.href = "/"
+              }}
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Выйти
             </Button>
