@@ -5,6 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import {
@@ -44,6 +49,8 @@ export default function HRDashboard() {
     confirmPassword: "",
   })
   const [employeeError, setEmployeeError] = useState("")
+  const [selectedRole, setSelectedRole] = useState<string>("all")
+  const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [requests, setRequests] = useState<any[]>([])
   const [token, setToken] = useState<string | null>(null)
   const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
@@ -265,12 +272,17 @@ export default function HRDashboard() {
     setConfirmDialog({ isOpen: false, requestId: null, action: null })
   }
     // Filter employees based on search term
-  const filteredEmployees = employees.filter(
-    (employee) =>
+  const filteredEmployees = employees.filter((employee) => {
+    const matchesSearch =
       employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      employee.email.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesRole = selectedRole === "all" || employee.role === selectedRole
+    const matchesStatus = selectedStatus === "all" || employee.status === selectedStatus
+
+    return matchesSearch && matchesRole && matchesStatus
+  })
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -424,10 +436,58 @@ export default function HRDashboard() {
                       className="pl-10"
                     />
                   </div>
-                  <Button variant="outline">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Фильтры
-                  </Button>
+                 <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline">
+                        <Filter className="w-4 h-4 mr-2" />
+                        Фильтры
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 space-y-4">
+                      <div>
+                        <Label className="block text-sm mb-1">Фильтр по роли</Label>
+                        <Select value={selectedRole} onValueChange={setSelectedRole}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выберите роль" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Все</SelectItem>
+                            <SelectItem value="employee">Сотрудник</SelectItem>
+                            <SelectItem value="hr">HR</SelectItem>
+                            <SelectItem value="admin">Админ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label className="block text-sm mb-1">Фильтр по статусу</Label>
+                        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Выберите статус" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Все</SelectItem>
+                            <SelectItem value="Активен">Активен</SelectItem>
+                            <SelectItem value="В отпуске">В отпуске</SelectItem>
+                            <SelectItem value="На больничном">На больничном</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedRole("all")
+                            setSelectedStatus("all")
+                          }}
+                        >
+                          Сбросить
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {/* <div className="space-y-4">
