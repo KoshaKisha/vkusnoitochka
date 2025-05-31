@@ -41,8 +41,8 @@
 ### 1. Клонируй репозиторий
 
 ```bash
-git clone https://github.com/your-username/your-repo.git
-cd your-repo
+git clone https://github.com/kkenttttt/vkusnoitochka
+cd kkenttttt/vkusnoitochka
 ```
 
 ### 2. Установи зависимости
