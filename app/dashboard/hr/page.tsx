@@ -207,7 +207,7 @@ export default function HRDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Всего сотрудников</CardTitle>
@@ -245,7 +245,7 @@ export default function HRDashboard() {
           </CardContent>
         </Card>
 
-          <Card>
+          {/* <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Эффективность</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -254,7 +254,7 @@ export default function HRDashboard() {
               <div className="text-2xl font-bold">92%</div>
               <p className="text-xs text-muted-foreground">+2% к прошлому месяцу</p>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         {/* Main Content */}
