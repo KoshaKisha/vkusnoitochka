@@ -10,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -23,6 +23,7 @@ model Employee {
   role      String
   schedules Schedule[]
   feedbacks Feedback[]
+  requests Request[]
 }
 
 model Schedule {
@@ -41,4 +42,17 @@ model Feedback {
   message     String
   employee    Employee @relation(fields: [employeeId], references: [id])
   employeeId  Int
+}
+
+model Request {
+  id         Int      @id @default(autoincrement())
+  type       String   // vacation, sick, other
+  comment    String?
+  startDate  DateTime
+  endDate    DateTime
+  createdAt  DateTime @default(now())
+  status     String   @default("pending") // pending, approved, rejected
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId Int
 }

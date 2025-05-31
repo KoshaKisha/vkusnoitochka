@@ -31,6 +31,16 @@ type ScheduleFromAPI = {
 export default function EmployeeDashboard() {
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [token, setToken] = useState<string | null>(null)
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
+  const [requestForm, setRequestForm] = useState({
+    type: "vacation" as "vacation" | "sick" | "other",
+    startDate: undefined as Date | undefined,
+    endDate: undefined as Date | undefined,
+    comment: "",
+  })
+  const [requestError, setRequestError] = useState("")
   const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
   const [isEditingProfile, setIsEditingProfile] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -65,6 +75,21 @@ export default function EmployeeDashboard() {
     const minutes = Math.round((totalHours - hours) * 60)
     return `${hours}:${minutes.toString().padStart(2, "0")}`
   }
+  const [requests, setRequests] = useState<any[]>([])
+  const fetchRequests = async () => {
+    if (!token) return
+    const res = await fetch("/api/requests", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setRequests(data)
+    }
+  }
+  useEffect(() => {
+    fetchRequests()
+  }, [token])
+
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token")
@@ -196,6 +221,75 @@ const formatDate = (date: Date): string => {
 
   setIsDialogOpen(false)
 }
+  // Get minimum date based on request type
+  const getMinDate = () => {
+    const today = new Date()
+    if (requestForm.type === "vacation") {
+      const minDate = new Date(today)
+      minDate.setDate(today.getDate() + 3)
+      return minDate
+    }
+    return today
+  }
+
+  // Validate request form
+  const validateRequest = () => {
+    if (!requestForm.startDate) {
+      setRequestError("Выберите дату начала")
+      return false
+    }
+    if (!requestForm.endDate) {
+      setRequestError("Выберите дату окончания")
+      return false
+    }
+    if (requestForm.endDate < requestForm.startDate) {
+      setRequestError("Дата окончания не может быть раньше даты начала")
+      return false
+    }
+    const durationInMs = requestForm.endDate.getTime() - requestForm.startDate.getTime()
+    const days = Math.ceil(durationInMs / (1000 * 60 * 60 * 24)) + 1 // +1, чтобы включать обе даты
+    if (requestForm.type === "vacation" && days > 28) {
+      setRequestError("Продолжительность отпуска не может превышать 28 дней")
+      return false
+    }
+    if (requestForm.type === "other" && !requestForm.comment.trim()) {
+      setRequestError("Укажите комментарий для заявки")
+      return false
+    }
+    return true
+  }
+
+  // Handle request submission
+  const handleSubmitRequest = async () => {
+    if (!validateRequest()) return
+
+    try {
+      const res = await fetch("/api/requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          type: requestForm.type,
+          startDate: requestForm.startDate?.toISOString(),
+          endDate: requestForm.endDate?.toISOString(),
+          comment: requestForm.comment,
+        }),
+      })
+
+      if (res.ok) {
+        setIsRequestDialogOpen(false)
+        setRequestError("")
+        fetchRequests()
+      } else {
+        const error = await res.json()
+        setRequestError(error.message || "Ошибка при создании заявки")
+      }
+    } catch (error) {
+      setRequestError("Ошибка при создании заявки")
+    }
+  }
 
 
   // Handle calendar date selection
@@ -571,23 +665,51 @@ const formatDate = (date: Date): string => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <Button className="w-full md:w-auto">
+                  <Button
+                    className="w-full md:w-auto"
+                    onClick={() => {
+                      setIsRequestDialogOpen(true)
+                      setRequestForm({
+                        type: "vacation",
+                        startDate: undefined,
+                        endDate: undefined,
+                        comment: "",
+                      })
+                      setRequestError("")
+                    }}
+                  >
                     <CalendarIcon className="w-4 h-4 mr-2" />
-                    Подать заявку на отпуск
+                    Подать заявку
                   </Button>
 
                   <div className="space-y-3">
-                    <h3 className="font-medium">Активные заявки</h3>
-                    <div className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">Заявка на отпуск</p>
-                          <p className="text-sm text-muted-foreground">01.03.2024 - 15.03.2024 (14 дней)</p>
-                          <p className="text-sm text-muted-foreground">Подана: 20.01.2024</p>
+                    {requests.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Нет активных заявок</p>
+                    ) : (
+                      requests.map((request) => (
+                        <div key={request.id} className="border rounded-lg p-4 flex justify-between items-start">
+                          <div>
+                            <p className="font-medium">Заявка на {request.type}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(request.startDate).toLocaleDateString("ru-RU")} - {new Date(request.endDate).toLocaleDateString("ru-RU")}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">На рассмотрении</Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedRequestId(request.id)
+                                setIsDeleteDialogOpen(true)
+                              }}
+                            >
+                              🗑
+                            </Button>
+                          </div>
                         </div>
-                        <Badge variant="secondary">На рассмотрении</Badge>
-                      </div>
-                    </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -650,6 +772,158 @@ const formatDate = (date: Date): string => {
               Отмена
             </Button>
             <Button onClick={handleAddShift}>Сохранить</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+     {/* Request Dialog */}
+      <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+        <DialogContent className="sm:max-w-[650px]">
+          <DialogHeader>
+            <DialogTitle>Подать заявку</DialogTitle>
+            <DialogDescription>Заполните форму для подачи заявки</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="requestType">Тип заявки</Label>
+              <Select
+                value={requestForm.type}
+                onValueChange={(value: "vacation" | "sick" | "other") => {
+                  setRequestForm({
+                    ...requestForm,
+                    type: value,
+                    startDate: undefined,
+                    endDate: undefined,
+                    comment: "",
+                  })
+                  setRequestError("")
+                }}
+              >
+                <SelectTrigger id="requestType">
+                  <SelectValue placeholder="Выберите тип заявки" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vacation">Отпуск</SelectItem>
+                  <SelectItem value="sick">Больничный</SelectItem>
+                  <SelectItem value="other">Другое</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <Label>Дата начала</Label>
+                <Calendar
+                  mode="single"
+                  selected={requestForm.startDate}
+                  onSelect={(date) => {
+                    setRequestForm({ ...requestForm, startDate: date })
+                    setRequestError("")
+                  }}
+                  disabled={(date) => date < getMinDate()}
+                  className="rounded-md border"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>Дата окончания</Label>
+                <Calendar
+                  mode="single"
+                  selected={requestForm.endDate}
+                  onSelect={(date) => {
+                    setRequestForm({ ...requestForm, endDate: date })
+                    setRequestError("")
+                  }}
+                  disabled={(date) => {
+                    if (!requestForm.startDate) return date < getMinDate()
+                    return date < requestForm.startDate
+                  }}
+                  className="rounded-md border"
+                />
+              </div>
+            </div>
+
+            {requestForm.type === "other" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="comment">Комментарий</Label>
+                <textarea
+                  id="comment"
+                  className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Укажите причину заявки..."
+                  value={requestForm.comment}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 300) {
+                      setRequestForm({ ...requestForm, comment: e.target.value })
+                      setRequestError("")
+                    }
+                  }}
+                  maxLength={300}
+                />
+                <div className="text-xs text-muted-foreground text-right">{requestForm.comment.length}/300</div>
+              </div>
+            )}
+
+            {requestForm.startDate && requestForm.endDate && (
+              <div className="bg-muted p-3 rounded-md">
+                <p className="text-sm font-medium">Сводка заявки:</p>
+                <p className="text-sm text-muted-foreground">
+                  Тип:{" "}
+                  {requestForm.type === "vacation" ? "Отпуск" : requestForm.type === "sick" ? "Больничный" : "Другое"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Период: {requestForm.startDate.toLocaleDateString("ru-RU")} -{" "}
+                  {requestForm.endDate.toLocaleDateString("ru-RU")}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Количество дней:{" "}
+                  {Math.ceil(
+                    (requestForm.endDate.getTime() - requestForm.startDate.getTime()) / (1000 * 60 * 60 * 24),
+                  ) + 1}
+                </p>
+              </div>
+            )}
+
+            {requestError && <p className="text-sm text-red-600">{requestError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRequestDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleSubmitRequest}>Подать заявку</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Удалить заявку?</DialogTitle>
+            <DialogDescription>
+              Вы уверены, что хотите удалить эту заявку? Это действие нельзя отменить.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!selectedRequestId) return
+
+                const res = await fetch(`/api/requests?id=${selectedRequestId}`, {
+                  method: "DELETE",
+                  headers: { Authorization: `Bearer ${token}` },
+                })
+
+                if (res.ok) {
+                  setIsDeleteDialogOpen(false)
+                  setSelectedRequestId(null)
+                  fetchRequests()
+                } else {
+                  console.error("Ошибка при удалении заявки")
+                }
+              }}
+            >
+              Удалить
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
