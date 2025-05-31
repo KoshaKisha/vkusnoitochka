@@ -47,6 +47,23 @@ export default function HRDashboard() {
     sick: "больничный",
     other: "другое",
   }
+  const [hourStats, setHourStats] = useState<{ currentMonthHours: number; difference: number } | null>(null)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/hr/stats")
+        if (res.ok) {
+          const data = await res.json()
+          setHourStats({ currentMonthHours: data.currentMonthHours, difference: data.difference })
+        }
+      } catch (error) {
+        console.error("Ошибка загрузки статистики по часам", error)
+      }
+    }
+
+    fetchStats()
+  }, [])
   useEffect(() => {
   const fetchRequests = async () => {
     try {
@@ -181,10 +198,14 @@ export default function HRDashboard() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">165</div>
-              <p className="text-xs text-muted-foreground">+3 к прошлому месяцу</p>
-            </CardContent>
-          </Card>
+              <div className="text-2xl font-bold">
+                {hourStats ? `${hourStats.currentMonthHours}` : "Загрузка..."}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {hourStats ? `${hourStats.difference >= 0 ? "+" : ""}${hourStats.difference} к прошлому месяцу` : ""}
+              </p>
+          </CardContent>
+        </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
