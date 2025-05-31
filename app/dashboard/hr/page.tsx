@@ -51,6 +51,9 @@ export default function HRDashboard() {
   const [employeeError, setEmployeeError] = useState("")
   const [selectedRole, setSelectedRole] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null)
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
+  const [newStatus, setNewStatus] = useState("Активен")
   const [requests, setRequests] = useState<any[]>([])
   const [token, setToken] = useState<string | null>(null)
   const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
@@ -578,8 +581,16 @@ export default function HRDashboard() {
                         >
                           {employee.status}
                         </Badge>
-                        <Button variant="outline" size="sm">
-                          Подробнее
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedEmployee(employee)
+                            setNewStatus(employee.status)
+                            setIsStatusDialogOpen(true)
+                          }}
+                        >
+                          Изменить статус
                         </Button>
                       </div>
                     </div>
@@ -849,6 +860,59 @@ export default function HRDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Изменить статус сотрудника</DialogTitle>
+              <DialogDescription>
+                Выберите новый статус для {selectedEmployee?.firstName} {selectedEmployee?.lastName}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Label>Статус</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите статус" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Активен">Активен</SelectItem>
+                  <SelectItem value="В отпуске">В отпуске</SelectItem>
+                  <SelectItem value="На больничном">На больничном</SelectItem>
+                  <SelectItem value="Уволен">Уволен</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsStatusDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!selectedEmployee) return
+
+                  const res = await fetch(`/api/hr/employees/${selectedEmployee.id}/status`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: newStatus }),
+                  })
+
+                  if (res.ok) {
+                    const updated = await res.json()
+                    setEmployees((prev) =>
+                      prev.map((emp) => (emp.id === updated.id ? { ...emp, status: updated.status } : emp))
+                    )
+                    setIsStatusDialogOpen(false)
+                  } else {
+                    console.error("Ошибка при обновлении статуса")
+                  }
+                }}
+              >
+                Сохранить
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </div>
   )
 }

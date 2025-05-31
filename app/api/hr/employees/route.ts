@@ -28,23 +28,29 @@ export async function GET() {
     const today = new Date()
 
     const result = employees.map((employee) => {
-      // Статус сотрудника
-      let status = "Активен"
-      const activeRequest = employee.requests.find((req) => {
-        const start = new Date(req.startDate)
-        const end = new Date(req.endDate)
-        return start <= today && today <= end
-      })
+      // По умолчанию используем статус из базы
+      let status = employee.status
 
-      if (activeRequest) {
-        status = activeRequest.type === "vacation" ? "В отпуске" : "На больничном"
+      // Только если не "Уволен", смотрим активные заявки
+      if (status !== "Уволен") {
+        const activeRequest = employee.requests.find((req) => {
+          const start = new Date(req.startDate)
+          const end = new Date(req.endDate)
+          return start <= today && today <= end
+        })
+
+        if (activeRequest) {
+          status = activeRequest.type === "vacation" ? "В отпуске" : "На больничном"
+        } else {
+          status = "Активен" // нет заявок — статус активен
+        }
       }
 
       // Часы за месяц
       const hoursMonth = employee.schedules.reduce((sum, schedule) => {
         const start = new Date(schedule.startTime)
         const end = new Date(schedule.endTime)
-        const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60) // часы
+        const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
         return sum + diff
       }, 0)
 
@@ -66,6 +72,7 @@ export async function GET() {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
   }
 }
+
 
 export async function POST(req: Request) {
   try {
