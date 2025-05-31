@@ -31,6 +31,8 @@ import {
 export default function HRDashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [requests, setRequests] = useState<any[]>([])
+  const [token, setToken] = useState<string | null>(null)
+  const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
   const [totalEmployees, setTotalEmployees] = useState(0)
   const [newThisMonth, setNewThisMonth] = useState(0)
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -48,7 +50,31 @@ export default function HRDashboard() {
     other: "другое",
   }
   const [hourStats, setHourStats] = useState<{ currentMonthHours: number; difference: number } | null>(null)
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("token")
+      if (!token) return
 
+      const res = await fetch("/api/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setProfile(data)
+      } else {
+        console.error("Ошибка загрузки профиля")
+      }
+    }
+
+    fetchProfile()
+  }, [])
+  useEffect(() => {
+    const stored = localStorage.getItem("token")
+    if (stored) setToken(stored)
+  }, [])
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -156,10 +182,22 @@ export default function HRDashboard() {
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">HR-панель</h1>
-                <p className="text-sm text-gray-500">Добро пожаловать, HR-менеджер</p>
+                 <p className="text-sm text-gray-500">
+                  Добро пожаловать,{" "}
+                  {profile
+                    ? `${profile.lastName} ${profile.firstName.charAt(0)}.`
+                    : "пользователь"}
+              </p>
               </div>
             </div>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                localStorage.removeItem("token")
+                window.location.href = "/"
+              }}
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Выйти
             </Button>
