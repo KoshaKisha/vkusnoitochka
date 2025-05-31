@@ -1,11 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import {
   Users,
   FileText,
@@ -22,7 +30,61 @@ import {
 
 export default function HRDashboard() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [requests, setRequests] = useState<any[]>([])
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    requestId: number | null
+    action: "approved" | "rejected" | null
+  }>({
+    isOpen: false,
+    requestId: null,
+    action: null,
+  })
+  const requestTypeMap: Record<string, string> = {
+    vacation: "отпуск",
+    sick: "больничный",
+    other: "другое",
+  }
+  useEffect(() => {
+  const fetchRequests = async () => {
+    try {
+      const res = await fetch("/api/hr/requests")
+      if (res.ok) {
+        const data = await res.json()
+        setRequests(data)
+      } else {
+        console.error("Ошибка при получении заявок")
+      }
+    } catch (error) {
+      console.error("Ошибка при получении заявок", error)
+    }
+  }
 
+  fetchRequests()
+  }, [])
+  const pendingCount = requests.filter((req) => req.status === "pending").length
+  const updateRequestStatus = async (id: number, status: "approved" | "rejected") => {
+    const res = await fetch(`/api/hr/requests/${id}/status`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    })
+
+    if (res.ok) {
+      const updated = await res.json()
+      setRequests((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: updated.status } : r))
+      )
+    }
+  }
+  const openConfirmDialog = (id: number, action: "approved" | "rejected") => {
+    setConfirmDialog({ isOpen: true, requestId: id, action })
+  } 
+  const handleConfirm = async () => {
+    if (!confirmDialog.requestId || !confirmDialog.action) return
+    await updateRequestStatus(confirmDialog.requestId, confirmDialog.action)
+    setConfirmDialog({ isOpen: false, requestId: null, action: null })
+  }
   const employees = [
     { id: 1, name: "Иванов И.И.", position: "Разработчик", department: "IT", status: "Активен", hoursMonth: 168 },
     { id: 2, name: "Петрова А.С.", position: "Дизайнер", department: "Дизайн", status: "Активен", hoursMonth: 160 },
@@ -35,26 +97,6 @@ export default function HRDashboard() {
       hoursMonth: 120,
     },
     { id: 4, name: "Козлова М.В.", position: "Менеджер", department: "Продажи", status: "Активен", hoursMonth: 172 },
-  ]
-
-  const pendingRequests = [
-    {
-      id: 1,
-      employee: "Иванов И.И.",
-      type: "Отпуск",
-      period: "01.03.2024 - 15.03.2024",
-      days: 14,
-      submitted: "20.01.2024",
-    },
-    {
-      id: 2,
-      employee: "Петрова А.С.",
-      type: "Больничный",
-      period: "25.01.2024 - 30.01.2024",
-      days: 5,
-      submitted: "25.01.2024",
-    },
-    { id: 3, employee: "Сидоров П.П.", type: "Отгул", period: "02.02.2024", days: 1, submitted: "28.01.2024" },
   ]
 
   const reports = [
@@ -106,7 +148,7 @@ export default function HRDashboard() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{pendingRequests.length}</div>
+             <div className="text-2xl font-bold">{pendingCount}</div>
               <p className="text-xs text-muted-foreground">Требуют рассмотрения</p>
             </CardContent>
           </Card>
@@ -136,11 +178,10 @@ export default function HRDashboard() {
 
         {/* Main Content */}
         <Tabs defaultValue="employees" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="employees">Сотрудники</TabsTrigger>
             <TabsTrigger value="requests">Заявки</TabsTrigger>
             <TabsTrigger value="reports">Отчеты</TabsTrigger>
-            <TabsTrigger value="feedback">Обратная связь</TabsTrigger>
           </TabsList>
 
           <TabsContent value="employees" className="space-y-6">
@@ -220,32 +261,54 @@ export default function HRDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {pendingRequests.map((request) => (
-                    <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                          <Calendar className="w-5 h-5 text-yellow-600" />
+                  {requests
+                    .filter((r) => r.status === "pending")
+                    .map((request) => (
+                      <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-yellow-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{`${request.employee.lastName} ${request.employee.firstName[0]}.`}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {requestTypeMap[request.type] || "Неизвестно"} • {new Date(request.startDate).toLocaleDateString("ru-RU")} -{" "}
+                              {new Date(request.endDate).toLocaleDateString("ru-RU")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Подана: {new Date(request.createdAt).toLocaleDateString("ru-RU")}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">{request.employee}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {request.type} • {request.period}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Подана: {request.submitted}</p>
+                        <div className="flex items-center space-x-2">
+                          <div className="text-right mr-4">
+                            <p className="text-sm font-medium">
+                              {
+                                Math.ceil(
+                                  (new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) /
+                                    (1000 * 60 * 60 * 24),
+                                ) + 1
+                              }{" "}
+                              дн.
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => openConfirmDialog(request.id, "rejected")}
+                          >
+                            Отклонить
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => openConfirmDialog(request.id, "approved")}
+                          >
+                            Одобрить
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="text-right mr-4">
-                          <p className="text-sm font-medium">{request.days} дн.</p>
-                        </div>
-                        <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
-                          Отклонить
-                        </Button>
-                        <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                          Одобрить
-                        </Button>
-                      </div>
-                    </div>
                   ))}
                 </div>
               </CardContent>
@@ -293,24 +356,33 @@ export default function HRDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="feedback">
-            <Card>
-              <CardHeader>
-                <CardTitle>Обратная связь от сотрудников</CardTitle>
-                <CardDescription>Сообщения, предложения и жалобы</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Новых сообщений нет</p>
-                  <p className="text-sm">Все обращения обработаны</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={confirmDialog.isOpen} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, isOpen: open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmDialog.action === "approved" ? "Подтвердить одобрение" : "Подтвердить отклонение"}
+            </DialogTitle>
+            <DialogDescription>
+              Вы уверены, что хотите{" "}
+              {confirmDialog.action === "approved" ? "одобрить" : "отклонить"} эту заявку?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialog({ isOpen: false, requestId: null, action: null })}>
+              Отмена
+            </Button>
+            <Button
+              className={confirmDialog.action === "approved" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+              onClick={handleConfirm}
+            >
+              Подтвердить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

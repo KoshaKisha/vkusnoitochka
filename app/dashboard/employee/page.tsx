@@ -40,6 +40,11 @@ export default function EmployeeDashboard() {
     endDate: undefined as Date | undefined,
     comment: "",
   })
+  const requestTypeMap: Record<string, string> = {
+    vacation: "отпуск",
+    sick: "больничный",
+    other: "другое",
+  }
   const [requestError, setRequestError] = useState("")
   const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
   const [isEditingProfile, setIsEditingProfile] = useState(false)
@@ -689,13 +694,27 @@ const formatDate = (date: Date): string => {
                       requests.map((request) => (
                         <div key={request.id} className="border rounded-lg p-4 flex justify-between items-start">
                           <div>
-                            <p className="font-medium">Заявка на {request.type}</p>
+                            <p className="font-medium">Заявка на {requestTypeMap[request.type] || "Неизвестно"}</p>
                             <p className="text-sm text-muted-foreground">
                               {new Date(request.startDate).toLocaleDateString("ru-RU")} - {new Date(request.endDate).toLocaleDateString("ru-RU")}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant="secondary">На рассмотрении</Badge>
+                           <Badge
+                              className={
+                                request.status === "approved"
+                                  ? "bg-green-100 text-green-800"
+                                  : request.status === "rejected"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }
+                            >
+                              {request.status === "approved"
+                                ? "Одобрено"
+                                : request.status === "rejected"
+                                ? "Отклонено"
+                                : "На рассмотрении"}
+                            </Badge>
                             <Button
                               variant="ghost"
                               size="icon"
