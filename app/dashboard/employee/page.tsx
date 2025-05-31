@@ -30,6 +30,7 @@ type ScheduleFromAPI = {
 export default function EmployeeDashboard() {
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [token, setToken] = useState<string | null>(null)
+  const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
   const [shifts, setShifts] = useState<{
     [date: string]: { startTime: string; endTime: string; hours: number }}>({})
   const [newShift, setNewShift] = useState({
@@ -40,31 +41,52 @@ export default function EmployeeDashboard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   // Calculate total hours for the current month
   const calculateTotalHours = () => {
-  const currentMonth = new Date().getMonth()
-  const currentYear = new Date().getFullYear()
+    const currentMonth = new Date().getMonth()
+    const currentYear = new Date().getFullYear()
 
-  const totalHours = Object.entries(shifts).reduce((sum, [dateStr, shift]) => {
-    const date = new Date(dateStr)
-    const isSameMonth = date.getMonth() === currentMonth && date.getFullYear() === currentYear
-    return isSameMonth ? sum + shift.hours : sum
-  }, 0)
+    const totalHours = Object.entries(shifts).reduce((sum, [dateStr, shift]) => {
+      const date = new Date(dateStr)
+      const isSameMonth = date.getMonth() === currentMonth && date.getFullYear() === currentYear
+      return isSameMonth ? sum + shift.hours : sum
+    }, 0)
 
-  const hours = Math.floor(totalHours)
-  const minutes = Math.round((totalHours - hours) * 60)
-  return `${hours}:${minutes.toString().padStart(2, "0")}`
-}
-useEffect(() => {
-  const stored = localStorage.getItem("token")
-  if (stored) setToken(stored)
-}, [])
-useEffect(() => {
-  const token = localStorage.getItem("token")
-  if (!token) return
-  const fetchShifts = async () => {
-    const res = await fetch("/api/schedules", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const hours = Math.floor(totalHours)
+    const minutes = Math.round((totalHours - hours) * 60)
+    return `${hours}:${minutes.toString().padStart(2, "0")}`
+  }
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("token")
+      if (!token) return
+
+      const res = await fetch("/api/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setProfile(data)
+      } else {
+        console.error("Ошибка загрузки профиля")
+      }
+    }
+
+    fetchProfile()
+  }, [])
+  useEffect(() => {
+    const stored = localStorage.getItem("token")
+    if (stored) setToken(stored)
+  }, [])
+  useEffect(() => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+    const fetchShifts = async () => {
+      const res = await fetch("/api/schedules", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
     })
 
     if (!res.ok) {
@@ -320,57 +342,33 @@ const formatDate = (date: Date): string => {
           </TabsContent>
 
           <TabsContent value="profile">
-            <Card>
-              <CardHeader>
-                <CardTitle>Мой профиль</CardTitle>
-                <CardDescription>Личная информация и настройки</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-medium mb-4">Основная информация</h3>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">ФИО</label>
-                          <p className="text-sm">Иванов Иван Иванович</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Должность</label>
-                          <p className="text-sm">Старший разработчик</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Отдел</label>
-                          <p className="text-sm">IT-отдел</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Дата приема</label>
-                          <p className="text-sm">15.03.2020</p>
-                        </div>
+            <div className="flex justify-center">
+              <Card className="w-full max-w-md">
+                <CardHeader>
+                  <CardTitle>Мой профиль</CardTitle>
+                  <CardDescription>Личная информация и настройки</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">ФИО</label>
+                        <p className="text-sm">{profile ? `${profile.lastName} ${profile.firstName}` : "..."}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Email</label>
+                        <p className="text-sm">{profile?.email ?? "..."}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Внутренний номер</label>
+                        <p className="text-sm">{profile?.id ?? "..."}</p>
                       </div>
                     </div>
-                    <div>
-                      <h3 className="font-medium mb-4">Контактная информация</h3>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Email</label>
-                          <p className="text-sm">i.ivanov@company.ru</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Телефон</label>
-                          <p className="text-sm">+7 (999) 123-45-67</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Внутренний номер</label>
-                          <p className="text-sm">1234</p>
-                        </div>
-                      </div>
-                    </div>
+                    <Button className="w-full">Редактировать профиль</Button>
                   </div>
-                  <Button>Редактировать профиль</Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="requests">
