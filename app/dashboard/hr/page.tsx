@@ -59,6 +59,16 @@ export default function HRDashboard() {
   const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
   const [totalEmployees, setTotalEmployees] = useState(0)
   const [newThisMonth, setNewThisMonth] = useState(0)
+  const fetchEmployees = async () => {
+  try {
+    const res = await fetch("/api/hr/employees")
+    if (!res.ok) throw new Error("Ошибка получения сотрудников")
+    const data = await res.json()
+    setEmployees(data)
+  } catch (error) {
+    console.error(error)
+  }
+}
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
     requestId: number | null
@@ -380,17 +390,6 @@ export default function HRDashboard() {
               </p>
           </CardContent>
         </Card>
-
-          {/* <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Эффективность</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">92%</div>
-              <p className="text-xs text-muted-foreground">+2% к прошлому месяцу</p>
-            </CardContent>
-          </Card> */}
         </div>
 
         {/* Main Content */}
@@ -492,51 +491,6 @@ export default function HRDashboard() {
                     </PopoverContent>
                   </Popover>
                 </div>
-
-                {/* <div className="space-y-4">
-                  {employees.map((employee) => (
-                    <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium">
-                            {`${employee.lastName} ${employee.firstName[0]}.`}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium">{employee.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {employee.role}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{employee.hoursMonth}ч</p>
-                          <p className="text-xs text-muted-foreground">за месяц</p>
-                        </div>
-                        <Badge
-                            variant={
-                              employee.status === "Активен"
-                                ? "default"
-                                : employee.status === "В отпуске"
-                                ? "secondary"
-                                : employee.status === "На больничном"
-                                ? "outline"
-                                : "destructive"
-                            }
-                          >
-                            {employee.status}
-                          </Badge>
-                        <Button variant="outline" size="sm">
-                          Подробнее
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent> */}
            <div className="space-y-4">
                   {filteredEmployees.map((employee) => (
                     <div
@@ -894,7 +848,7 @@ export default function HRDashboard() {
                   const res = await fetch(`/api/hr/employees/${selectedEmployee.id}/status`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: newStatus }),
+                    body: JSON.stringify({ manualStatus: newStatus }),
                   })
 
                   if (res.ok) {
@@ -902,6 +856,7 @@ export default function HRDashboard() {
                     setEmployees((prev) =>
                       prev.map((emp) => (emp.id === updated.id ? { ...emp, status: updated.status } : emp))
                     )
+                    await fetchEmployees() 
                     setIsStatusDialogOpen(false)
                   } else {
                     console.error("Ошибка при обновлении статуса")

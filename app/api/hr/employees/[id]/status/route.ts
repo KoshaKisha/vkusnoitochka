@@ -1,31 +1,29 @@
 import { prisma } from "@/lib/prisma"
 import { NextRequest, NextResponse } from "next/server"
 
-export async function PUT(req: NextRequest, context: { params: { id: string } }) {
-  const { id } = context.params
-
-  const employeeId = parseInt(id)
-  if (isNaN(employeeId)) {
-    return NextResponse.json({ error: "Некорректный ID" }, { status: 400 })
-  }
-
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  const id = parseInt(params.id, 10)
   const body = await req.json()
-  const { status } = body
+  const { manualStatus } = body
 
   const allowedStatuses = ["Активен", "В отпуске", "На больничном", "Уволен"]
-  if (!allowedStatuses.includes(status)) {
+
+  if (!allowedStatuses.includes(manualStatus)) {
     return NextResponse.json({ error: "Недопустимый статус" }, { status: 400 })
   }
 
   try {
-    const updated = await prisma.employee.update({
-      where: { id: employeeId },
-      data: { status },
+    await prisma.employee.update({
+      where: { id },
+      data: {
+        manualStatus,
+      },
     })
 
-    return NextResponse.json(updated)
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Ошибка при обновлении статуса сотрудника:", error)
+    console.error("Ошибка обновления статуса сотрудника:", error)
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
   }
 }
+

@@ -11,9 +11,7 @@ export async function GET() {
       include: {
         schedules: {
           where: {
-            date: {
-              gte: startOfMonth,
-            },
+            date: { gte: startOfMonth },
           },
         },
         requests: {
@@ -28,11 +26,13 @@ export async function GET() {
     const today = new Date()
 
     const result = employees.map((employee) => {
-      // По умолчанию используем статус из базы
-      let status = employee.status
+      let status: string
 
-      // Только если не "Уволен", смотрим активные заявки
-      if (status !== "Уволен") {
+      // Если статус указан вручную и не "Активен" — используем его
+      if (employee.manualStatus && employee.manualStatus !== "Активен") {
+        status = employee.manualStatus
+      } else {
+        // Иначе вычисляем по заявкам
         const activeRequest = employee.requests.find((req) => {
           const start = new Date(req.startDate)
           const end = new Date(req.endDate)
@@ -42,16 +42,14 @@ export async function GET() {
         if (activeRequest) {
           status = activeRequest.type === "vacation" ? "В отпуске" : "На больничном"
         } else {
-          status = "Активен" // нет заявок — статус активен
+          status = "Активен"
         }
       }
 
-      // Часы за месяц
       const hoursMonth = employee.schedules.reduce((sum, schedule) => {
         const start = new Date(schedule.startTime)
         const end = new Date(schedule.endTime)
-        const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
-        return sum + diff
+        return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
       }, 0)
 
       return {
@@ -72,7 +70,6 @@ export async function GET() {
     return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
   }
 }
-
 
 export async function POST(req: Request) {
   try {
