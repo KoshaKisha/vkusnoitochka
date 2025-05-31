@@ -544,7 +544,7 @@ export default function HRDashboard() {
                         <div
                           className={`w-12 h-12 ${getRoleBackgroundColor(employee.role)} rounded-full flex items-center justify-center`}
                         >
-                          {getRoleIcon(employee.userRole)}
+                          {getRoleIcon(employee.role)}
                         </div>
                         <div>
                           <div className="flex items-center space-x-2">
