@@ -103,13 +103,11 @@ export default function HRDashboard() {
   if (!profile) return
 
   try {
-    // Загружаем данные по рабочим часам (например, через API или прямо здесь)
     const now = new Date()
     const month = now.toLocaleString("ru-RU", { month: "long" })
     const year = now.getFullYear()
     const filename = `отчет_по_рабочим_часам_за_${month}_${year}.csv`
 
-    // Пример CSV-данных (можно взять из employees)
     const csvRows = [
       ["Имя", "Фамилия", "Часы за месяц"],
       ...employees.map((emp) => [emp.firstName, emp.lastName, emp.hoursMonth])
@@ -117,11 +115,9 @@ export default function HRDashboard() {
 
     const csvContent = csvRows.map((row) => row.join(",")).join("\n")
 
-    // Сохраняем файл
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
 
-    // Сохраняем отчет в БД
     const res = await fetch("/api/hr/reports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -252,7 +248,6 @@ export default function HRDashboard() {
 
   fetchEmployees()
 }, [])
-   // Validate new employee form
   const validateEmployee = () => {
     if (!newEmployee.firstName.trim()) {
       setEmployeeError("Введите имя")
@@ -285,7 +280,6 @@ export default function HRDashboard() {
     return true
   }
 
-  // Handle employee creation
   const handleCreateEmployee = async () => {
     if (!validateEmployee()) return
 
@@ -316,7 +310,6 @@ export default function HRDashboard() {
           confirmPassword: "",
         })
         setEmployeeError("")
-        // Refresh employees list or show success message
       } else {
         const error = await res.json()
         setEmployeeError(error.message || "Ошибка при создании сотрудника")
@@ -752,16 +745,13 @@ export default function HRDashboard() {
                         variant="destructive"
                         size="sm"
                         onClick={async () => {
-                          // if (confirm("Вы уверены, что хотите удалить этот отчёт?")) {
                             const res = await fetch(`/api/hr/reports/${report.id}`, { method: "DELETE" })
 
                             if (res.ok) {
-                              // Обнови список отчётов после удаления
                               setReports((prev) => prev.filter((r) => r.id !== report.id))
                             } else {
                               console.error("Ошибка при удалении отчёта")
                             }
-                          // }
                         }}
                       >
                         Удалить
@@ -991,7 +981,6 @@ export default function HRDashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="working_hours">По рабочим часам</SelectItem>
-                {/* можно добавить другие типы */}
               </SelectContent>
             </Select>
             <DialogFooter>
