@@ -18,6 +18,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { useEffect } from "react"
+import { Input } from "@/components/ui/input"
 
 type ScheduleFromAPI = {
   id: number
@@ -31,6 +32,16 @@ export default function EmployeeDashboard() {
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [token, setToken] = useState<string | null>(null)
   const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+  const [passwordError, setPasswordError] = useState("")
   const [shifts, setShifts] = useState<{
     [date: string]: { startTime: string; endTime: string; hours: number }}>({})
   const [newShift, setNewShift] = useState({
@@ -229,7 +240,12 @@ const formatDate = (date: Date): string => {
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Личный кабинет</h1>
-                <p className="text-sm text-gray-500">Добро пожаловать, Иванов И.И.</p>
+                <p className="text-sm text-gray-500">
+                  Добро пожаловать,{" "}
+                  {profile
+                    ? `${profile.lastName} ${profile.firstName.charAt(0)}.`
+                    : "пользователь"}
+              </p>
               </div>
             </div>
             <Button
@@ -349,6 +365,7 @@ const formatDate = (date: Date): string => {
                   <CardDescription>Личная информация и настройки</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {!isEditingProfile ? (
                   <div className="space-y-6">
                     <div className="space-y-3">
                       <div>
@@ -364,8 +381,183 @@ const formatDate = (date: Date): string => {
                         <p className="text-sm">{profile?.id ?? "..."}</p>
                       </div>
                     </div>
-                    <Button className="w-full">Редактировать профиль</Button>
-                  </div>
+                    <Button
+                        className="w-full"
+                        onClick={() => {
+                          if (profile) {
+                            setEditForm({
+                              firstName: profile.firstName,
+                              lastName: profile.lastName,
+                              email: profile.email,
+                              oldPassword: "",
+                              newPassword: "",
+                              confirmPassword: "",
+                            })
+                            setIsEditingProfile(true)
+                            setPasswordError("")
+                          }
+                        }}
+                      >
+                        Редактировать профиль
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="firstName">Имя</Label>
+                            <Input
+                              id="firstName"
+                              value={editForm.firstName}
+                              onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                              placeholder="Введите имя"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="lastName">Фамилия</Label>
+                            <Input
+                              id="lastName"
+                              value={editForm.lastName}
+                              onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                              placeholder="Введите фамилию"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="email">Email</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={editForm.email}
+                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                            placeholder="Введите email"
+                          />
+                        </div>
+
+                        <div className="border-t pt-4">
+                          <h3 className="font-medium mb-3">Изменить пароль</h3>
+
+                          <div className="flex flex-col gap-2 mb-3">
+                            <Label htmlFor="oldPassword">Текущий пароль</Label>
+                            <Input
+                              id="oldPassword"
+                              type="password"
+                              value={editForm.oldPassword}
+                              onChange={(e) => setEditForm({ ...editForm, oldPassword: e.target.value })}
+                              placeholder="Введите текущий пароль"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-2 mb-3">
+                            <Label htmlFor="newPassword">Новый пароль</Label>
+                            <Input
+                              id="newPassword"
+                              type="password"
+                              value={editForm.newPassword}
+                              onChange={(e) => {
+                                setEditForm({ ...editForm, newPassword: e.target.value })
+                                setPasswordError("")
+                              }}
+                              placeholder="Введите новый пароль"
+                            />
+                          </div>
+
+                          <div className="flex flex-col gap-2 mb-3">
+                            <Label htmlFor="confirmPassword">Подтвердите новый пароль</Label>
+                            <Input
+                              id="confirmPassword"
+                              type="password"
+                              value={editForm.confirmPassword}
+                              onChange={(e) => {
+                                setEditForm({ ...editForm, confirmPassword: e.target.value })
+                                setPasswordError("")
+                              }}
+                              placeholder="Повторите новый пароль"
+                            />
+                          </div>
+
+                          {passwordError && <p className="text-sm text-red-600 mb-3">{passwordError}</p>}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            setIsEditingProfile(false)
+                            setPasswordError("")
+                          }}
+                        >
+                          Отмена
+                        </Button>
+                        <Button
+                          className="flex-1"
+                          onClick={async () => {
+                            // Validate passwords if they are being changed
+                            if (editForm.newPassword || editForm.confirmPassword || editForm.oldPassword) {
+                              if (!editForm.oldPassword) {
+                                setPasswordError("Введите текущий пароль")
+                                return
+                              }
+                              if (!editForm.newPassword) {
+                                setPasswordError("Введите новый пароль")
+                                return
+                              }
+                              if (editForm.newPassword !== editForm.confirmPassword) {
+                                setPasswordError("Новые пароли не совпадают")
+                                return
+                              }
+                              if (editForm.newPassword.length < 6) {
+                                setPasswordError("Новый пароль должен содержать минимум 6 символов")
+                                return
+                              }
+                            }
+
+                            try {
+                              const updateData: any = {
+                                firstName: editForm.firstName,
+                                lastName: editForm.lastName,
+                                email: editForm.email,
+                              }
+
+                              // Only include password fields if user is changing password
+                              if (editForm.oldPassword && editForm.newPassword) {
+                                updateData.oldPassword = editForm.oldPassword
+                                updateData.newPassword = editForm.newPassword
+                              }
+
+                              const res = await fetch("/api/profile", {
+                                method: "PUT",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                  Authorization: `Bearer ${token}`,
+                                },
+                                body: JSON.stringify(updateData),
+                              })
+
+                              if (res.ok) {
+                                const updatedProfile = await res.json()
+                                setProfile(updatedProfile)
+                                setIsEditingProfile(false)
+                                setPasswordError("")
+                                // Show success message or notification here if needed
+                              } else {
+                                const error = await res.json()
+                                setPasswordError(error.message || "Ошибка при обновлении профиля")
+                              }
+                            } catch (error) {
+                              setPasswordError("Ошибка при обновлении профиля")
+                            }
+                          }}
+                        >
+                          Сохранить
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
