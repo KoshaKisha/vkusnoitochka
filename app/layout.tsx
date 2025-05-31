@@ -3,6 +3,9 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'vkusno i tochka',
+  icons: {
+    icon: "/burger.png",
+  },
 }
 
 export default function RootLayout({
