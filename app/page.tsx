@@ -17,20 +17,45 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+  e.preventDefault()
+  setIsLoading(true)
 
-    // Симуляция входа
-      if (email === "admin@company.ru") {
+  try {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.error || "Ошибка входа")
+    }
+
+    localStorage.setItem("token", data.token)
+
+    // Редирект по роли
+    switch (data.role) {
+      case "admin":
         window.location.href = "/dashboard/admin"
-      } else if (email === "hr@company.ru") {
+        break
+      case "hr":
         window.location.href = "/dashboard/hr"
-      } else {
+        break
+      default:
         window.location.href = "/dashboard/employee"
-      }
-      setIsLoading(false)
-
+    }
+  } catch (error) {
+  if (error instanceof Error) {
+    alert(error.message)
+  } else {
+    alert("Произошла неизвестная ошибка")
   }
+} finally {
+    setIsLoading(false)
+  }
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -81,15 +106,9 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Вход..." : "Войти"}
             </Button>
-
-            <div className="text-center">
-              <Button variant="link" className="text-sm">
-                Забыли пароль?
-              </Button>
-            </div>
           </form>
 
-          <Alert className="mt-4">
+          {/* <Alert className="mt-4">
             <AlertDescription className="text-sm">
               <strong>Демо-аккаунты:</strong>
               <br />
@@ -99,7 +118,7 @@ export default function LoginPage() {
               <br />
               Сотрудник: employee@company.ru
             </AlertDescription>
-          </Alert>
+          </Alert> */}
         </CardContent>
       </Card>
     </div>

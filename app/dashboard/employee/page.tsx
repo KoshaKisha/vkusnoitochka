@@ -5,39 +5,185 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, MessageSquare, User, Play, Square, Coffee, LogOut, Timer } from "lucide-react"
+import { CalendarIcon, User, LogOut, Timer } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { useEffect } from "react"
+
+type ScheduleFromAPI = {
+  id: number
+  date: string
+  startTime: string
+  endTime: string
+  employeeId: number
+}
 
 export default function EmployeeDashboard() {
-  const [isWorking, setIsWorking] = useState(false)
-  const [workStartTime, setWorkStartTime] = useState<Date | null>(null)
-  const [totalHoursToday] = useState("7:45")
-  const [totalHoursMonth] = useState("156:30")
+  const [date, setDate] = useState<Date | undefined>(new Date())
+  const [shifts, setShifts] = useState<{
+    [date: string]: { startTime: string; endTime: string; hours: number }}>({})
+  const [newShift, setNewShift] = useState({
+    date: new Date(),
+    startTime: "09:00",
+    endTime: "18:00",
+  })
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  const handleStartWork = () => {
-    setIsWorking(true)
-    setWorkStartTime(new Date())
+  // Calculate total hours for the current month
+  const calculateTotalHours = () => {
+  const currentMonth = new Date().getMonth()
+  const currentYear = new Date().getFullYear()
+
+  const totalHours = Object.entries(shifts).reduce((sum, [dateStr, shift]) => {
+    const date = new Date(dateStr)
+    const isSameMonth = date.getMonth() === currentMonth && date.getFullYear() === currentYear
+    return isSameMonth ? sum + shift.hours : sum
+  }, 0)
+
+  const hours = Math.floor(totalHours)
+  const minutes = Math.round((totalHours - hours) * 60)
+  return `${hours}:${minutes.toString().padStart(2, "0")}`
+}
+
+useEffect(() => {
+  const fetchShifts = async () => {
+    const res = await fetch("/api/schedules?employeeId=1") // Подставить актуального пользователя
+
+    if (!res.ok) {
+      console.error("Ошибка загрузки смен")
+      return
+    }
+
+    const data: ScheduleFromAPI[] = await res.json()
+
+    const parsedShifts: {
+      [date: string]: { startTime: string; endTime: string; hours: number }
+    } = data.reduce((acc, shift) => {
+      const dateStr = formatDate(new Date(shift.date))
+
+      const start = new Date(shift.startTime)
+      const end = new Date(shift.endTime)
+      const hours = (end.getTime() - start.getTime()) / 1000 / 60 / 60
+
+      acc[dateStr] = {
+        startTime: start.toTimeString().slice(0, 5),
+        endTime: end.toTimeString().slice(0, 5),
+        hours,
+      }
+
+      return acc
+    }, {} as {
+      [date: string]: { startTime: string; endTime: string; hours: number }
+    })
+
+    setShifts(parsedShifts)
   }
 
-  const handleEndWork = () => {
-    setIsWorking(false)
-    setWorkStartTime(null)
+  fetchShifts()
+}, [])
+
+
+  // Calculate total hours for today
+  const calculateTodayHours = () => {
+  const today = new Date()
+  const todayStr = today.toISOString().split("T")[0]
+  const todayShift = shifts[todayStr]
+
+  if (!todayShift) return "00:00"
+
+  const hours = Math.floor(todayShift.hours)
+  const minutes = Math.round((todayShift.hours - hours) * 60)
+  return `${hours}:${minutes.toString().padStart(2, "0")}`
+}
+
+
+  // Format date to YYYY-MM-DD
+const formatDate = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = (date.getMonth() + 1).toString().padStart(2, "0")
+  const day = date.getDate().toString().padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+
+  // Handle adding a new shift
+  const handleAddShift = async () => {
+  if (!newShift.date) return
+
+  const formattedDate = formatDate(newShift.date)
+
+  const res = await fetch("/api/schedules", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      date: formattedDate,
+      startTime: newShift.startTime,
+      endTime: newShift.endTime,
+      employeeId: 1, // 👈 Здесь пока захардкожен, позже заменим на текущего пользователя
+    }),
+  })
+
+  if (res.ok) {
+    const shift = await res.json()
+
+    const [startHour, startMinute] = newShift.startTime.split(":").map(Number)
+    const [endHour, endMinute] = newShift.endTime.split(":").map(Number)
+    const hours = endHour - startHour + (endMinute - startMinute) / 60
+
+    setShifts({
+      ...shifts,
+      [formattedDate]: {
+        startTime: newShift.startTime,
+        endTime: newShift.endTime,
+        hours,
+      },
+    })
+  } else {
+    console.error("Ошибка при добавлении смены")
   }
 
-  const getCurrentWorkTime = () => {
-    if (!workStartTime) return "00:00"
-    const now = new Date()
-    const diff = now.getTime() - workStartTime.getTime()
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
+  setIsDialogOpen(false)
+}
+
+
+  // Handle calendar date selection
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setDate(date)
+      setNewShift({
+        ...newShift,
+        date: date,
+      })
+      setIsDialogOpen(true)
+    }
   }
 
-  const recentTimeEntries = [
-    { date: "2024-01-26", start: "09:00", end: "18:00", hours: "8:00", status: "Завершен" },
-    { date: "2024-01-25", start: "09:15", end: "17:45", hours: "7:30", status: "Завершен" },
-    { date: "2024-01-24", start: "09:00", end: "18:30", hours: "8:30", status: "Завершен" },
-    { date: "2024-01-23", start: "09:30", end: "18:00", hours: "7:30", status: "Завершен" },
-  ]
+  // Generate time options for select
+  const generateTimeOptions = () => {
+    const options = []
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const formattedHour = hour.toString().padStart(2, "0")
+        const formattedMinute = minute.toString().padStart(2, "0")
+        options.push(`${formattedHour}:${formattedMinute}`)
+      }
+    }
+    return options
+  }
+
+  // Check if a date has a shift
+  const hasShift = (date: Date) => {
+    return shifts[formatDate(date)] !== undefined
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -70,89 +216,87 @@ export default function EmployeeDashboard() {
               <Timer className="w-5 h-5" />
               <span>Учет рабочего времени</span>
             </CardTitle>
-            <CardDescription>Отметьте начало и окончание рабочего дня</CardDescription>
+            <CardDescription>Сводка отработанных часов</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600 mb-2">
-                  {isWorking ? getCurrentWorkTime() : "00:00"}
-                </div>
-                <p className="text-sm text-muted-foreground">Текущая смена</p>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-600 mb-2">{totalHoursToday}</div>
+                <div className="text-3xl font-bold text-green-600 mb-2">{calculateTodayHours()}</div>
                 <p className="text-sm text-muted-foreground">Сегодня отработано</p>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-purple-600 mb-2">{totalHoursMonth}</div>
+                <div className="text-3xl font-bold text-purple-600 mb-2">{calculateTotalHours()}</div>
                 <p className="text-sm text-muted-foreground">За месяц</p>
               </div>
-            </div>
-
-            <div className="flex justify-center space-x-4 mt-6">
-              {!isWorking ? (
-                <Button onClick={handleStartWork} className="bg-green-600 hover:bg-green-700">
-                  <Play className="w-4 h-4 mr-2" />
-                  Начать смену
-                </Button>
-              ) : (
-                <>
-                  <Button onClick={handleEndWork} variant="destructive">
-                    <Square className="w-4 h-4 mr-2" />
-                    Завершить смену
-                  </Button>
-                  <Button variant="outline">
-                    <Coffee className="w-4 h-4 mr-2" />
-                    Перерыв
-                  </Button>
-                </>
-              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Main Content */}
         <Tabs defaultValue="timesheet" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="timesheet">Табель</TabsTrigger>
             <TabsTrigger value="profile">Профиль</TabsTrigger>
             <TabsTrigger value="requests">Заявки</TabsTrigger>
-            <TabsTrigger value="feedback">Обратная связь</TabsTrigger>
           </TabsList>
 
           <TabsContent value="timesheet" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>История рабочего времени</CardTitle>
-                <CardDescription>Ваши отметки времени за последние дни</CardDescription>
+                <CardTitle>Календарь смен</CardTitle>
+                <CardDescription>Нажмите на дату, чтобы добавить или изменить смену</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentTimeEntries.map((entry, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="text-center">
-                          <div className="font-medium">{entry.date}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(entry.date).toLocaleDateString("ru-RU", { weekday: "short" })}
+                <div className="flex flex-col md:flex-row gap-6">
+                  <div className="md:w-1/2">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={handleDateSelect}
+                      className="rounded-md border"
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      modifiers={{
+                        hasShift: (date) => hasShift(date),
+                      }}
+                      modifiersClassNames={{
+                        hasShift: "bg-green-100 font-bold text-green-800",
+                      }}
+                    />
+                  </div>
+                  <div className="md:w-1/2">
+                    <h3 className="font-medium mb-4">Запланированные смены</h3>
+                    <div className="space-y-4">
+                      {Object.entries(shifts).map(([date, shift]) => (
+                        <div key={date} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center space-x-4">
+                            <div className="text-center">
+                              <div className="font-medium">{date}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {new Date(date).toLocaleDateString("ru-RU", { weekday: "short" })}
+                              </div>
+                            </div>
+                            <div className="text-sm">
+                              <div>
+                                <strong>Начало:</strong> {shift.startTime}
+                              </div>
+                              <div>
+                                <strong>Окончание:</strong> {shift.endTime}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-medium text-lg">
+                              {Math.floor(shift.hours)}:
+                              {Math.round((shift.hours % 1) * 60)
+                                .toString()
+                                .padStart(2, "0")}
+                            </div>
+                            <Badge variant="default">Запланировано</Badge>
                           </div>
                         </div>
-                        <div className="text-sm">
-                          <div>
-                            <strong>Начало:</strong> {entry.start}
-                          </div>
-                          <div>
-                            <strong>Окончание:</strong> {entry.end}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium text-lg">{entry.hours}</div>
-                        <Badge variant="default">{entry.status}</Badge>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -221,7 +365,7 @@ export default function EmployeeDashboard() {
               <CardContent>
                 <div className="space-y-4">
                   <Button className="w-full md:w-auto">
-                    <Calendar className="w-4 h-4 mr-2" />
+                    <CalendarIcon className="w-4 h-4 mr-2" />
                     Подать заявку на отпуск
                   </Button>
 
@@ -242,33 +386,66 @@ export default function EmployeeDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="feedback">
-            <Card>
-              <CardHeader>
-                <CardTitle>Обратная связь</CardTitle>
-                <CardDescription>Оставьте отзыв, предложение или жалобу</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <Button className="w-full md:w-auto">
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Написать сообщение
-                  </Button>
-
-                  <div className="space-y-3">
-                    <h3 className="font-medium">Мои сообщения</h3>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>У вас пока нет сообщений</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Shift Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Добавить смену</DialogTitle>
+            <DialogDescription>
+              Укажите время начала и окончания смены на {newShift.date?.toLocaleDateString("ru-RU")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="startTime">Время начала</Label>
+                <Select
+                  value={newShift.startTime}
+                  onValueChange={(value) => setNewShift({ ...newShift, startTime: value })}
+                >
+                  <SelectTrigger id="startTime">
+                    <SelectValue placeholder="Выберите время" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {generateTimeOptions().map((time) => (
+                      <SelectItem key={`start-${time}`} value={time}>
+                        {time}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="endTime">Время окончания</Label>
+                <Select
+                  value={newShift.endTime}
+                  onValueChange={(value) => setNewShift({ ...newShift, endTime: value })}
+                >
+                  <SelectTrigger id="endTime">
+                    <SelectValue placeholder="Выберите время" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {generateTimeOptions().map((time) => (
+                      <SelectItem key={`end-${time}`} value={time}>
+                        {time}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleAddShift}>Сохранить</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
