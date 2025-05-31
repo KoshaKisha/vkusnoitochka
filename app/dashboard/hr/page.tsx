@@ -31,6 +31,8 @@ import {
 export default function HRDashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [requests, setRequests] = useState<any[]>([])
+  const [totalEmployees, setTotalEmployees] = useState(0)
+  const [newThisMonth, setNewThisMonth] = useState(0)
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
     requestId: number | null
@@ -62,6 +64,26 @@ export default function HRDashboard() {
 
   fetchRequests()
   }, [])
+  useEffect(() => {
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch("/api/hr/employees")
+      if (!res.ok) throw new Error("Ошибка получения сотрудников")
+      const data = await res.json()
+
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const newCount = data.filter((emp: any) => new Date(emp.createdAt) >= startOfMonth).length
+
+      setTotalEmployees(data.length)
+      setNewThisMonth(newCount)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  fetchEmployees()
+}, [])
   const pendingCount = requests.filter((req) => req.status === "pending").length
   const updateRequestStatus = async (id: number, status: "approved" | "rejected") => {
     const res = await fetch(`/api/hr/requests/${id}/status`, {
@@ -137,8 +159,8 @@ export default function HRDashboard() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">150</div>
-              <p className="text-xs text-muted-foreground">+2 за месяц</p>
+              <div className="text-2xl font-bold">{totalEmployees}</div>
+              <p className="text-xs text-muted-foreground">+{newThisMonth} за месяц</p>
             </CardContent>
           </Card>
 
