@@ -40,6 +40,7 @@ export default function HRDashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [employees, setEmployees] = useState<any[]>([])
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false)
+  const [openGenerateDialog, setOpenGenerateDialog] = useState(false)
   const [newEmployee, setNewEmployee] = useState({
     firstName: "",
     lastName: "",
@@ -54,6 +55,8 @@ export default function HRDashboard() {
   const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("Активен")
+  const [reportType, setReportType] = useState<string>("")
+  const [reports, setReports] = useState<any[]>([])
   const [requests, setRequests] = useState<any[]>([])
   const [token, setToken] = useState<string | null>(null)
   const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
@@ -96,6 +99,52 @@ export default function HRDashboard() {
         return <User className="w-5 h-5 text-gray-600" />
     }
   }
+  const generateReport = async () => {
+  if (!profile) return
+
+  try {
+    // Загружаем данные по рабочим часам (например, через API или прямо здесь)
+    const now = new Date()
+    const month = now.toLocaleString("ru-RU", { month: "long" })
+    const year = now.getFullYear()
+    const filename = `отчет_по_рабочим_часам_за_${month}_${year}.csv`
+
+    // Пример CSV-данных (можно взять из employees)
+    const csvRows = [
+      ["Имя", "Фамилия", "Часы за месяц"],
+      ...employees.map((emp) => [emp.firstName, emp.lastName, emp.hoursMonth])
+    ]
+
+    const csvContent = csvRows.map((row) => row.join(",")).join("\n")
+
+    // Сохраняем файл
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+
+    // Сохраняем отчет в БД
+    const res = await fetch("/api/hr/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Отчет по рабочим часам",
+        type: "Время",
+        description: `За ${month} ${year}`,
+        filePath: url,
+        createdBy: profile.id,
+      }),
+    })
+
+    if (res.ok) {
+      const newReport = await res.json()
+      setReports((prev) => [newReport, ...prev])
+      setOpenGenerateDialog(false)
+    } else {
+      console.error("Ошибка при сохранении отчета")
+    }
+  } catch (error) {
+    console.error("Ошибка генерации отчета", error)
+  }
+}
     // Get role background color
   const getRoleBackgroundColor = (userRole: "employee" | "hr" | "admin") => {
     switch (userRole) {
@@ -130,6 +179,22 @@ export default function HRDashboard() {
 
     fetchProfile()
   }, [])
+  useEffect(() => {
+    const fetchReports = async () => {
+      if (!profile) return
+      try {
+        const res = await fetch(`/api/hr/reports/user/${profile.id}`)
+        if (res.ok) {
+          const data = await res.json()
+          setReports(data)
+        }
+      } catch (error) {
+        console.error("Ошибка загрузки отчетов", error)
+      }
+    }
+
+    fetchReports()
+  }, [profile])
   useEffect(() => {
     const stored = localStorage.getItem("token")
     if (stored) setToken(stored)
@@ -260,7 +325,29 @@ export default function HRDashboard() {
       setEmployeeError("Ошибка при создании сотрудника")
     }
   }
+  function getReportFileName(reportType: string, createdAt: string | Date): string {
+    const date = new Date(createdAt)
 
+    const monthNames = [
+      "январь", "февраль", "март", "апрель", "май", "июнь",
+      "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"
+    ]
+
+    const month = monthNames[date.getMonth()]
+    const year = date.getFullYear()
+
+    // Преобразуем тип отчета в человеко-понятный текст
+    const typeMap: Record<string, string> = {
+      working_hours: "по_рабочим_часам",
+      vacation: "по_отпускам",
+      sick: "по_больничным",
+      analytics: "аналитика",
+    }
+
+    const typeText = typeMap[reportType] || reportType
+
+    return `отчет_${typeText}_${month}_${year}.csv`
+  }
   const pendingCount = requests.filter((req) => req.status === "pending").length
   const updateRequestStatus = async (id: number, status: "approved" | "rejected") => {
     const res = await fetch(`/api/hr/requests/${id}/status`, {
@@ -310,12 +397,6 @@ export default function HRDashboard() {
 
     fetchEmployees()
   }, [])
-  const reports = [
-    { name: "Отчет по рабочему времени", description: "Январь 2024", date: "31.01.2024", type: "Время" },
-    { name: "Отчет по отпускам", description: "Квартальный отчет", date: "31.12.2023", type: "Отпуска" },
-    { name: "Аналитика эффективности", description: "Месячная аналитика", date: "31.01.2024", type: "Аналитика" },
-  ]
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -630,7 +711,7 @@ export default function HRDashboard() {
                     <CardTitle>Отчеты и аналитика</CardTitle>
                     <CardDescription>Генерация и просмотр отчетов</CardDescription>
                   </div>
-                  <Button>
+                  <Button onClick={() => setOpenGenerateDialog(true)}>
                     <FileText className="w-4 h-4 mr-2" />
                     Создать отчет
                   </Button>
@@ -647,15 +728,44 @@ export default function HRDashboard() {
                         <div>
                           <p className="font-medium">{report.name}</p>
                           <p className="text-sm text-muted-foreground">{report.description}</p>
-                          <p className="text-xs text-muted-foreground">Создан: {report.date}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Создан: {new Date(report.createdAt).toLocaleDateString("ru-RU", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Badge variant="outline">{report.type}</Badge>
-                        <Button variant="outline" size="sm">
+                       <Button asChild variant="outline" size="sm">
+                        <a
+                          href={report.filePath}
+                          download={getReportFileName(report.type, report.createdAt)}
+                        >
                           <Download className="w-4 h-4 mr-2" />
                           Скачать
-                        </Button>
+                        </a>
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          // if (confirm("Вы уверены, что хотите удалить этот отчёт?")) {
+                            const res = await fetch(`/api/hr/reports/${report.id}`, { method: "DELETE" })
+
+                            if (res.ok) {
+                              // Обнови список отчётов после удаления
+                              setReports((prev) => prev.filter((r) => r.id !== report.id))
+                            } else {
+                              console.error("Ошибка при удалении отчёта")
+                            }
+                          // }
+                        }}
+                      >
+                        Удалить
+                      </Button>
                       </div>
                     </div>
                   ))}
@@ -865,6 +975,27 @@ export default function HRDashboard() {
               >
                 Сохранить
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={openGenerateDialog} onOpenChange={setOpenGenerateDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Создание отчета</DialogTitle>
+              <DialogDescription>Выберите тип отчета</DialogDescription>
+            </DialogHeader>
+            <Select onValueChange={(value) => setReportType(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите тип отчета" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="working_hours">По рабочим часам</SelectItem>
+                {/* можно добавить другие типы */}
+              </SelectContent>
+            </Select>
+            <DialogFooter>
+              <Button onClick={generateReport}>Создать</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

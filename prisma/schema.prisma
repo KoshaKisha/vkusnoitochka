@@ -25,7 +25,7 @@ model Employee {
   manualStatus String?
   createdAt  DateTime  @default(now())
   schedules  Schedule[]
-  feedbacks  Feedback[]
+  reports    Report[]
   requests   Request[]
 }
 
@@ -38,13 +38,15 @@ model Schedule {
   employeeId  Int
 }
 
-model Feedback {
-  id          Int      @id @default(autoincrement())
-  date        DateTime
-  time        DateTime
-  message     String
-  employee    Employee @relation(fields: [employeeId], references: [id])
-  employeeId  Int
+model Report {
+  id         Int      @id @default(autoincrement())
+  name       String
+  type       String
+  description String?
+  filePath   String
+  createdAt  DateTime @default(now())
+  createdBy  Int
+  employee   Employee @relation(fields: [createdBy], references: [id])
 }
 
 model Request {
