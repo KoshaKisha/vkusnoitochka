@@ -58,6 +58,77 @@ export default function HRDashboard() {
     console.error(error)
   }
 }
+  useEffect(() => {
+  const fetchAll = async () => {
+    const token = localStorage.getItem("token")
+    if (token) setToken(token)
+
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    try {
+      const [profileRes, employeesRes, reportsRes, statsRes, requestsRes] = await Promise.all([
+        fetch("/api/profile", {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch("/api/hr/employees"),
+        fetch(token ? `/api/hr/reports/user/${JSON.parse(atob(token.split('.')[1])).id}` : ""),
+        fetch("/api/hr/stats"),
+        fetch("/api/hr/requests"),
+      ])
+
+      // Профиль
+      if (profileRes.ok) {
+        const profileData = await profileRes.json()
+        setProfile(profileData)
+      } else {
+        console.error("Ошибка загрузки профиля")
+      }
+
+      // Сотрудники
+      if (employeesRes.ok) {
+        const employeesData = await employeesRes.json()
+        setEmployees(employeesData)
+
+        const newThisMonth = employeesData.filter((emp: any) =>
+          new Date(emp.createdAt) >= startOfMonth
+        ).length
+
+        setTotalEmployees(employeesData.length)
+        setNewThisMonth(newThisMonth)
+      } else {
+        console.error("Ошибка получения сотрудников")
+      }
+
+      // Отчёты
+      if (reportsRes.ok) {
+        const reportsData = await reportsRes.json()
+        setReports(reportsData)
+      }
+
+      // Статистика
+      if (statsRes.ok) {
+        const statsData = await statsRes.json()
+        setHourStats({
+          currentMonthHours: statsData.currentMonthHours,
+          difference: statsData.difference,
+        })
+      }
+
+      // Заявки
+      if (requestsRes.ok) {
+        const requestsData = await requestsRes.json()
+        setRequests(requestsData)
+      } else {
+        console.error("Ошибка получения заявок")
+      }
+    } catch (error) {
+      console.error("Ошибка при загрузке данных:", error)
+    }
+  }
+
+  fetchAll()
+}, [])
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
     requestId: number | null
@@ -139,101 +210,6 @@ export default function HRDashboard() {
         return "bg-gray-100"
     }
   }
-  useEffect(() => {
-    const fetchProfile = async () => {
-      const token = localStorage.getItem("token")
-      if (!token) return
-
-      const res = await fetch("/api/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        setProfile(data)
-      } else {
-        console.error("Ошибка загрузки профиля")
-      }
-    }
-
-    fetchProfile()
-  }, [])
-  useEffect(() => {
-    const fetchReports = async () => {
-      if (!profile) return
-      try {
-        const res = await fetch(`/api/hr/reports/user/${profile.id}`)
-        if (res.ok) {
-          const data = await res.json()
-          setReports(data)
-        }
-      } catch (error) {
-        console.error("Ошибка загрузки отчетов", error)
-      }
-    }
-
-    fetchReports()
-  }, [profile])
-  useEffect(() => {
-    const stored = localStorage.getItem("token")
-    if (stored) setToken(stored)
-  }, [])
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await fetch("/api/hr/stats")
-        if (res.ok) {
-          const data = await res.json()
-          setHourStats({ currentMonthHours: data.currentMonthHours, difference: data.difference })
-        }
-      } catch (error) {
-        console.error("Ошибка загрузки статистики по часам", error)
-      }
-    }
-
-    fetchStats()
-  }, [])
-  useEffect(() => {
-  const fetchRequests = async () => {
-    try {
-      const res = await fetch("/api/hr/requests")
-      if (res.ok) {
-        const data = await res.json()
-        setRequests(data)
-      } else {
-        console.error("Ошибка при получении заявок")
-      }
-    } catch (error) {
-      console.error("Ошибка при получении заявок", error)
-    }
-  }
-
-  fetchRequests()
-  }, [])
-  useEffect(() => {
-  const fetchEmployees = async () => {
-    try {
-      const res = await fetch("/api/hr/employees")
-      if (!res.ok) throw new Error("Ошибка получения сотрудников")
-      const data = await res.json()
-      setEmployees(data)
-
-      const now = new Date()
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      const newCount = data.filter((emp: any) => new Date(emp.createdAt) >= startOfMonth).length
-
-      setTotalEmployees(data.length)
-      setNewThisMonth(newCount)
-    } catch (error) {
-      console.error(error)
-    }
-  }
-
-  fetchEmployees()
-}, [])
-  
   function getReportFileName(reportType: string, createdAt: string | Date): string {
     const date = new Date(createdAt)
 
@@ -290,20 +266,6 @@ export default function HRDashboard() {
 
     return matchesSearch && matchesRole && matchesStatus
   })
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const res = await fetch("/api/hr/employees")
-        if (!res.ok) throw new Error("Ошибка получения сотрудников")
-        const data = await res.json()
-        setEmployees(data)
-      } catch (error) {
-        console.error(error)
-      }
-    }
-
-    fetchEmployees()
-  }, [])
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}

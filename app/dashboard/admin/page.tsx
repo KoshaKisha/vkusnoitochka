@@ -32,8 +32,10 @@ export default function AdminDashboard() {
   const [selectedRole, setSelectedRole] = useState<string>("all")
   const [employees, setEmployees] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [token, setToken] = useState<string | null>(null)
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false)
   const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false)
+  const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
   const [newEmployee, setNewEmployee] = useState({
     firstName: "",
     lastName: "",
@@ -54,19 +56,43 @@ export default function AdminDashboard() {
   })
   const [employeeError, setEmployeeError] = useState("")
   const [editEmployeeError, setEditEmployeeError] = useState("")
-      useEffect(() => {
-    const fetchEmployees = async () => {
+  useEffect(() => {
+  const init = async () => {
+    const storedToken = localStorage.getItem("token")
+    if (storedToken) {
+      setToken(storedToken)
+
       try {
-        const res = await fetch("/api/hr/employees")
-        if (!res.ok) throw new Error("Ошибка получения сотрудников")
-        const data = await res.json()
-        setEmployees(data)
+        const [profileRes, employeesRes] = await Promise.all([
+          fetch("/api/profile", {
+            headers: {
+              Authorization: `Bearer ${storedToken}`,
+            },
+          }),
+          fetch("/api/hr/employees"),
+        ])
+
+        if (profileRes.ok) {
+          const profileData = await profileRes.json()
+          setProfile(profileData)
+        } else {
+          console.error("Ошибка загрузки профиля")
+        }
+
+        if (employeesRes.ok) {
+          const employeesData = await employeesRes.json()
+          setEmployees(employeesData)
+        } else {
+          console.error("Ошибка получения сотрудников")
+        }
       } catch (error) {
-        console.error(error)
+        console.error("Ошибка при инициализации:", error)
       }
     }
-    fetchEmployees()
+  }
+    init()
   }, [])
+
   // Get role icon and color
   const getRoleIcon = (userRole: "employee" | "hr" | "admin") => {
     switch (userRole) {
@@ -283,9 +309,6 @@ const handleCreateEmployee = async () => {
     setEditEmployeeError("")
     setIsEditEmployeeDialogOpen(true)
   }
-
-  const token = "admin_token"
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -298,7 +321,12 @@ const handleCreateEmployee = async () => {
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Панель администратора</h1>
-                <p className="text-sm text-gray-500">Добро пожаловать, Администратор</p>
+                <p className="text-sm text-gray-500">
+                  Добро пожаловать,{" "}
+                  {profile
+                    ? `${profile.lastName} ${profile.firstName.charAt(0)}.`
+                    : "пользователь"}
+              </p>
               </div>
             </div>
             <Button
