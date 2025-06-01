@@ -24,43 +24,30 @@ import {
   Users,
   FileText,
   Calendar,
-  MessageSquare,
-  UserPlus,
   Search,
   Filter,
   Download,
   LogOut,
   Clock,
-  TrendingUp,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { User, Shield, Crown } from "lucide-react"
+import { User, Crown } from "lucide-react"
 
 export default function HRDashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [employees, setEmployees] = useState<any[]>([])
-  const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false)
-  const [newEmployee, setNewEmployee] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    role: "employee" as "employee" | "hr" | "admin",
-    password: "",
-    confirmPassword: "",
-  })
-  const [employeeError, setEmployeeError] = useState("")
   const [selectedRole, setSelectedRole] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null)
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [newStatus, setNewStatus] = useState("Активен")
-  const [reportType, setReportType] = useState<string>("")
   const [reports, setReports] = useState<any[]>([])
   const [requests, setRequests] = useState<any[]>([])
   const [token, setToken] = useState<string | null>(null)
   const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
   const [totalEmployees, setTotalEmployees] = useState(0)
   const [newThisMonth, setNewThisMonth] = useState(0)
+  const [hourStats, setHourStats] = useState<{ currentMonthHours: number; difference: number } | null>(null)
   const fetchEmployees = async () => {
   try {
     const res = await fetch("/api/hr/employees")
@@ -85,8 +72,8 @@ export default function HRDashboard() {
     sick: "больничный",
     other: "другое",
   }
-  const [hourStats, setHourStats] = useState<{ currentMonthHours: number; difference: number } | null>(null)
-    const getRoleIcon = (userRole: "employee" | "hr" | "admin") => {
+  
+  const getRoleIcon = (userRole: "employee" | "hr" | "admin") => {
     switch (userRole) {
       case "employee":
         return <User className="w-5 h-5 text-green-600" />
@@ -246,76 +233,7 @@ export default function HRDashboard() {
 
   fetchEmployees()
 }, [])
-  const validateEmployee = () => {
-    if (!newEmployee.firstName.trim()) {
-      setEmployeeError("Введите имя")
-      return false
-    }
-    if (!newEmployee.lastName.trim()) {
-      setEmployeeError("Введите фамилию")
-      return false
-    }
-    if (!newEmployee.email.trim()) {
-      setEmployeeError("Введите email")
-      return false
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmployee.email)) {
-      setEmployeeError("Введите корректный email")
-      return false
-    }
-    if (!newEmployee.password) {
-      setEmployeeError("Введите пароль")
-      return false
-    }
-    if (newEmployee.password.length < 6) {
-      setEmployeeError("Пароль должен содержать минимум 6 символов")
-      return false
-    }
-    if (newEmployee.password !== newEmployee.confirmPassword) {
-      setEmployeeError("Пароли не совпадают")
-      return false
-    }
-    return true
-  }
-
-  const handleCreateEmployee = async () => {
-    if (!validateEmployee()) return
-
-    try {
-      const res = await fetch("/api/hr/employees", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          firstName: newEmployee.firstName,
-          lastName: newEmployee.lastName,
-          email: newEmployee.email,
-          role: newEmployee.role,
-          password: newEmployee.password,
-        }),
-      })
-
-      if (res.ok) {
-        setIsAddEmployeeDialogOpen(false)
-        setNewEmployee({
-          firstName: "",
-          lastName: "",
-          email: "",
-          role: "employee",
-          password: "",
-          confirmPassword: "",
-        })
-        setEmployeeError("")
-      } else {
-        const error = await res.json()
-        setEmployeeError(error.message || "Ошибка при создании сотрудника")
-      }
-    } catch (error) {
-      setEmployeeError("Ошибка при создании сотрудника")
-    }
-  }
+  
   function getReportFileName(reportType: string, createdAt: string | Date): string {
     const date = new Date(createdAt)
 
@@ -326,8 +244,6 @@ export default function HRDashboard() {
 
     const month = monthNames[date.getMonth()]
     const year = date.getFullYear()
-
-    // Преобразуем тип отчета в человеко-понятный текст
     const typeMap: Record<string, string> = {
       working_hours: "по_рабочим_часам",
       vacation: "по_отпускам",
@@ -480,23 +396,6 @@ export default function HRDashboard() {
                     <CardTitle>Управление сотрудниками</CardTitle>
                     <CardDescription>Список всех сотрудников и их информация</CardDescription>
                   </div>
-                  <Button
-                    onClick={() => {
-                      setIsAddEmployeeDialogOpen(true)
-                      setNewEmployee({
-                        firstName: "",
-                        lastName: "",
-                        email: "",
-                        role: "employee",
-                        password: "",
-                        confirmPassword: "",
-                      })
-                      setEmployeeError("")
-                    }}
-                  >
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Добавить сотрудника
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -798,130 +697,6 @@ export default function HRDashboard() {
         </DialogContent>
       </Dialog>
 
-       {/* Add Employee Dialog */}
-      <Dialog open={isAddEmployeeDialogOpen} onOpenChange={setIsAddEmployeeDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Добавить нового сотрудника</DialogTitle>
-            <DialogDescription>Заполните информацию о новом сотруднике</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="firstName">Имя</Label>
-                <Input
-                  id="firstName"
-                  value={newEmployee.firstName}
-                  onChange={(e) => {
-                    setNewEmployee({ ...newEmployee, firstName: e.target.value })
-                    setEmployeeError("")
-                  }}
-                  placeholder="Введите имя"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="lastName">Фамилия</Label>
-                <Input
-                  id="lastName"
-                  value={newEmployee.lastName}
-                  onChange={(e) => {
-                    setNewEmployee({ ...newEmployee, lastName: e.target.value })
-                    setEmployeeError("")
-                  }}
-                  placeholder="Введите фамилию"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={newEmployee.email}
-                onChange={(e) => {
-                  setNewEmployee({ ...newEmployee, email: e.target.value })
-                  setEmployeeError("")
-                }}
-                placeholder="Введите email"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="role">Роль в системе</Label>
-              <Select
-                value={newEmployee.role}
-                onValueChange={(value: "employee" | "hr" | "admin") => {
-                  setNewEmployee({ ...newEmployee, role: value })
-                  setEmployeeError("")
-                }}
-              >
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Выберите роль" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="employee">
-                    <div className="flex items-center space-x-2">
-                      <User className="w-4 h-4 text-green-600" />
-                      <span>Сотрудник</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="hr">
-                    <div className="flex items-center space-x-2">
-                      <Users className="w-4 h-4 text-purple-600" />
-                      <span>HR-менеджер</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="admin">
-                    <div className="flex items-center space-x-2">
-                      <Crown className="w-4 h-4 text-orange-600" />
-                      <span>Администратор</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="password">Пароль</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={newEmployee.password}
-                  onChange={(e) => {
-                    setNewEmployee({ ...newEmployee, password: e.target.value })
-                    setEmployeeError("")
-                  }}
-                  placeholder="Введите пароль"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={newEmployee.confirmPassword}
-                  onChange={(e) => {
-                    setNewEmployee({ ...newEmployee, confirmPassword: e.target.value })
-                    setEmployeeError("")
-                  }}
-                  placeholder="Повторите пароль"
-                />
-              </div>
-            </div>
-
-            {employeeError && <p className="text-sm text-red-600">{employeeError}</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddEmployeeDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleCreateEmployee}>Создать сотрудника</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
       <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
           <DialogContent className="sm:max-w-[400px]">
             <DialogHeader>
