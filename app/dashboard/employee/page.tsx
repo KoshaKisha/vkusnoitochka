@@ -439,35 +439,55 @@ const formatDate = (date: Date): string => {
                   <div className="md:w-1/2">
                     <h3 className="font-medium mb-4">Запланированные смены</h3>
                     <div className="space-y-4">
-                      {Object.entries(shifts).map(([date, shift]) => (
-                        <div key={date} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-4">
-                            <div className="text-center">
-                              <div className="font-medium">{date}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {new Date(date).toLocaleDateString("ru-RU", { weekday: "short" })}
+                      {Object.entries(shifts)
+                        .sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime()) // сортировка по дате по убыванию
+                        .slice(0, 10) // только 10 последних смен
+                        .map(([date, shift]) => {
+                          const now = new Date()
+                          const shiftDate = new Date(date)
+                          const [startHour, startMinute] = shift.startTime.split(":").map(Number)
+                          const [endHour, endMinute] = shift.endTime.split(":").map(Number)
+
+                          const shiftStart = new Date(shiftDate)
+                          shiftStart.setHours(startHour, startMinute, 0, 0)
+
+                          const shiftEnd = new Date(shiftDate)
+                          shiftEnd.setHours(endHour, endMinute, 0, 0)
+
+                          let statusLabel = "Запланировано"
+                          let badgeClass = "bg-yellow-100 text-yellow-800"
+
+                          if (now > shiftEnd) {
+                            statusLabel = "Прошла"
+                            badgeClass = "bg-red-100 text-red-800"
+                          } else if (now >= shiftStart && now <= shiftEnd) {
+                            statusLabel = "Текущая"
+                            badgeClass = "bg-green-100 text-green-800"
+                          }
+
+                          return (
+                            <div key={date} className="flex items-center justify-between p-4 border rounded-lg">
+                              <div className="flex items-center space-x-4">
+                                <div className="text-center">
+                                  <div className="font-medium">{date}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {shiftDate.toLocaleDateString("ru-RU", { weekday: "short" })}
+                                  </div>
+                                </div>
+                                <div className="text-sm">
+                                  <div><strong>Начало:</strong> {shift.startTime}</div>
+                                  <div><strong>Окончание:</strong> {shift.endTime}</div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-medium text-lg">
+                                  {Math.floor(shift.hours)}:{Math.round((shift.hours % 1) * 60).toString().padStart(2, "0")}
+                                </div>
+                                <Badge className={badgeClass}>{statusLabel}</Badge>
                               </div>
                             </div>
-                            <div className="text-sm">
-                              <div>
-                                <strong>Начало:</strong> {shift.startTime}
-                              </div>
-                              <div>
-                                <strong>Окончание:</strong> {shift.endTime}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-medium text-lg">
-                              {Math.floor(shift.hours)}:
-                              {Math.round((shift.hours % 1) * 60)
-                                .toString()
-                                .padStart(2, "0")}
-                            </div>
-                            <Badge variant="default">Запланировано</Badge>
-                          </div>
-                        </div>
-                      ))}
+                          )
+                        })}
                     </div>
                   </div>
                 </div>
