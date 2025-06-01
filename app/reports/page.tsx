@@ -65,7 +65,7 @@ export default function ReportsPage() {
 }, [])
 
  const handleGenerateReport = async () => {
-  if (!dateFrom || !dateTo || reportType !== "time" || !userId) return
+  if (!dateFrom || !dateTo || !userId) return
 
   const res = await fetch("/api/reports", {
     method: "POST",

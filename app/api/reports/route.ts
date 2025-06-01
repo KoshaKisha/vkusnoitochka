@@ -3,26 +3,57 @@ import { prisma } from "@/lib/prisma"
 import { NextRequest, NextResponse } from "next/server"
 import { join } from "path"
 import { format } from "date-fns"
-import { getWorkHoursCSV } from "@/lib/reportGenerator"
+import { getWorkHoursCSV,  getOvertimeCSV, getVacationCSV } from "@/lib/reportGenerator"
 
 export async function POST(req: NextRequest) {
   try {
     const { type, dateFrom, dateTo, createdBy } = await req.json()
 
-    // Получение CSV-содержимого
-    const csvContent = await getWorkHoursCSV(new Date(dateFrom), new Date(dateTo))
+    const from = new Date(dateFrom)
+    const to = new Date(dateTo)
 
-    const fileName = `report_time_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`
+    let csvContent = ""
+    let reportName = ""
+    let filePrefix = ""
+    let description = ""
+
+    switch (type) {
+      case "time":
+        csvContent = await getWorkHoursCSV(from, to)
+        reportName = `Отчет по рабочему времени за ${format(from, "dd.MM.yyyy")} - ${format(to, "dd.MM.yyyy")}`
+        filePrefix = "workhours"
+        description = "Автоматически сгенерированный отчет по рабочему времени"
+        break
+
+      case "overtime":
+        csvContent = await getOvertimeCSV(from, to)
+        reportName = `Отчет по переработкам за ${format(from, "dd.MM.yyyy")} - ${format(to, "dd.MM.yyyy")}`
+        filePrefix = "overtime"
+        description = "Автоматически сгенерированный отчет по переработкам"
+        break
+
+      case "vacation":
+        csvContent = await getVacationCSV()
+        reportName = `Отчет по отпускам`
+        filePrefix = "vacation"
+        description = "Автоматически сгенерированный отчет по отпускам"
+        break
+
+      default:
+        return NextResponse.json({ error: "Неизвестный тип отчета" }, { status: 400 })
+    }
+
+    const fileName = `report_${filePrefix}_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`
     const filePath = `/reports/${fileName}`
-
     const absolutePath = join(process.cwd(), "public", "reports", fileName)
+
     await writeFile(absolutePath, csvContent)
 
     const report = await prisma.report.create({
       data: {
-        name: `Отчет по рабочему времени за ${format(new Date(dateFrom), "dd.MM.yyyy")} - ${format(new Date(dateTo), "dd.MM.yyyy")}`,
-        type: "time",
-        description: "Автоматически сгенерированный отчет по рабочему времени",
+        name: reportName,
+        type,
+        description,
         filePath,
         createdBy,
       },
