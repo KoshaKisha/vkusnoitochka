@@ -40,7 +40,6 @@ export default function HRDashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [employees, setEmployees] = useState<any[]>([])
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false)
-  const [openGenerateDialog, setOpenGenerateDialog] = useState(false)
   const [newEmployee, setNewEmployee] = useState({
     firstName: "",
     lastName: "",
@@ -133,7 +132,6 @@ export default function HRDashboard() {
     if (res.ok) {
       const newReport = await res.json()
       setReports((prev) => [newReport, ...prev])
-      setOpenGenerateDialog(false)
     } else {
       console.error("Ошибка при сохранении отчета")
     }
@@ -704,10 +702,19 @@ export default function HRDashboard() {
                     <CardTitle>Отчеты и аналитика</CardTitle>
                     <CardDescription>Генерация и просмотр отчетов</CardDescription>
                   </div>
-                  <Button onClick={() => setOpenGenerateDialog(true)}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Создать отчет
-                  </Button>
+                  <div className="flex flex-col space-y-2">
+                    <Button onClick={generateReport}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      Быстрый отчет
+                    </Button>
+
+                    <Button variant="outline" asChild>
+                      <a href="/reports">
+                        <FileText className="w-4 h-4 mr-2" />
+                        Все отчеты
+                      </a>
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -965,26 +972,6 @@ export default function HRDashboard() {
               >
                 Сохранить
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={openGenerateDialog} onOpenChange={setOpenGenerateDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Создание отчета</DialogTitle>
-              <DialogDescription>Выберите тип отчета</DialogDescription>
-            </DialogHeader>
-            <Select onValueChange={(value) => setReportType(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите тип отчета" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="working_hours">По рабочим часам</SelectItem>
-              </SelectContent>
-            </Select>
-            <DialogFooter>
-              <Button onClick={generateReport}>Создать</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
