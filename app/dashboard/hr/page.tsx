@@ -30,6 +30,8 @@ import {
   Download,
   LogOut,
   Clock,
+  Trash2,
+  Edit
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, Crown } from "lucide-react"
@@ -49,17 +51,35 @@ export default function HRDashboard() {
   const [totalEmployees, setTotalEmployees] = useState(0)
   const [newThisMonth, setNewThisMonth] = useState(0)
   const [hourStats, setHourStats] = useState<{ currentMonthHours: number; difference: number } | null>(null)
+  // Shifts management state
+  const [selectedEmployeeForShifts, setSelectedEmployeeForShifts] = useState<any | null>(null)
+  const [shifts, setShifts] = useState<any[]>([])
+  const [isEditShiftDialogOpen, setIsEditShiftDialogOpen] = useState(false)
+  const [editingShift, setEditingShift] = useState<any | null>(null)
+  const [isDeleteShiftDialogOpen, setIsDeleteShiftDialogOpen] = useState(false)
+  const [deletingShift, setDeletingShift] = useState<any | null>(null)
   const router = useRouter()
   const fetchEmployees = async () => {
-  try {
-    const res = await fetch("/api/hr/employees")
-    if (!res.ok) throw new Error("Ошибка получения сотрудников")
-    const data = await res.json()
-    setEmployees(data)
-  } catch (error) {
-    console.error(error)
+    try {
+      const res = await fetch("/api/hr/employees")
+      if (!res.ok) throw new Error("Ошибка получения сотрудников")
+      const data = await res.json()
+      setEmployees(data)
+    } catch (error) {
+      console.error(error)
+    }
   }
-}
+  const fetchShifts = async (employeeId: number) => {
+    try {
+      const res = await fetch(`/api/hr/shifts/by-employee/${employeeId}`)
+      if (!res.ok) throw new Error("Ошибка получения смен")
+      const data = await res.json()
+      setShifts(data)
+    } catch (error) {
+      console.error(error)
+      setShifts([])
+    }
+  }
   useEffect(() => {
   const fetchAll = async () => {
     const token = localStorage.getItem("token")
@@ -284,6 +304,72 @@ export default function HRDashboard() {
 
     return matchesSearch && matchesRole && matchesStatus
   })
+
+   // Get only employees with role "employee"
+  const employeeRoleUsers = employees.filter((emp) => emp.role === "employee")
+
+  // Handle shift editing
+  const handleEditShift = async () => {
+    if (!editingShift) return
+
+    try {
+      const res = await fetch(`/api/hr/shifts/${editingShift.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: editingShift.date,
+          startTime: editingShift.startTime,
+          endTime: editingShift.endTime,
+        }),
+      })
+
+      if (res.ok) {
+        setIsEditShiftDialogOpen(false)
+        if (selectedEmployeeForShifts) {
+          fetchShifts(selectedEmployeeForShifts.id)
+        }
+      } else {
+        console.error("Ошибка при обновлении смены")
+      }
+    } catch (error) {
+      console.error("Ошибка при обновлении смены", error)
+    }
+  }
+
+  // Handle shift deletion
+  const handleDeleteShift = async () => {
+    if (!deletingShift) return
+
+    try {
+      const res = await fetch(`/api/hr/shifts/${deletingShift.id}`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        setIsDeleteShiftDialogOpen(false)
+        if (selectedEmployeeForShifts) {
+          fetchShifts(selectedEmployeeForShifts.id)
+        }
+      } else {
+        console.error("Ошибка при удалении смены")
+      }
+    } catch (error) {
+      console.error("Ошибка при удалении смены", error)
+    }
+  }
+
+  // Generate time options for select
+  const generateTimeOptions = () => {
+    const options = []
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const formattedHour = hour.toString().padStart(2, "0")
+        const formattedMinute = minute.toString().padStart(2, "0")
+        options.push(`${formattedHour}:${formattedMinute}`)
+      }
+    }
+    return options
+  }
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -362,8 +448,9 @@ export default function HRDashboard() {
 
         {/* Main Content */}
         <Tabs defaultValue="employees" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="employees">Сотрудники</TabsTrigger>
+            <TabsTrigger value="shifts">Смены</TabsTrigger>
             <TabsTrigger value="requests">Заявки</TabsTrigger>
             <TabsTrigger value="reports">Отчеты</TabsTrigger>
           </TabsList>
@@ -507,6 +594,133 @@ export default function HRDashboard() {
                     <p className="text-muted-foreground">Сотрудники не найдены</p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="shifts" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Управление сменами</CardTitle>
+                <CardDescription>Просмотр и редактирование смен сотрудников</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-2">
+                    <Label>Выберите сотрудника</Label>
+                    <Select
+                      value={selectedEmployeeForShifts?.id?.toString() || ""}
+                      onValueChange={(value) => {
+                        const employee = employeeRoleUsers.find((emp) => emp.id.toString() === value)
+                        setSelectedEmployeeForShifts(employee || null)
+                        if (employee) {
+                          fetchShifts(employee.id)
+                        } else {
+                          setShifts([])
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите сотрудника" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employeeRoleUsers.map((employee) => (
+                          <SelectItem key={employee.id} value={employee.id.toString()}>
+                            {employee.firstName} {employee.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedEmployeeForShifts && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium">
+                          Смены сотрудника: {selectedEmployeeForShifts.firstName} {selectedEmployeeForShifts.lastName}
+                        </h3>
+                      </div>
+
+                      {shifts.length > 0 ? (
+                        <div className="space-y-3">
+                          {shifts.map((shift) => (
+                            <div key={shift.id} className="flex items-center justify-between p-4 border rounded-lg">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <Clock className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">{new Date(shift.date).toLocaleDateString("ru-RU")}</p>
+                                 <p className="text-sm text-muted-foreground">
+                                    {new Date(shift.startTime).toLocaleTimeString("ru-RU", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}{" "}
+                                    -{" "}
+                                    {new Date(shift.endTime).toLocaleTimeString("ru-RU", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <div className="text-right mr-4">
+                                  <p className="text-sm font-medium">
+                                    {(() => {
+                                      const start = new Date(shift.startTime)
+                                      const end = new Date(shift.endTime)
+                                      const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+                                      const h = Math.floor(hours)
+                                      const m = Math.round((hours - h) * 60)
+                                      return `${h}:${m.toString().padStart(2, "0")}`
+                                    })()}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">часов</p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingShift({
+                                      ...shift,
+                                      date: shift.date.split("T")[0], // Format date for input
+                                    })
+                                    setIsEditShiftDialogOpen(true)
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Редактировать
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => {
+                                    setDeletingShift(shift)
+                                    setIsDeleteShiftDialogOpen(true)
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Удалить
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground">У сотрудника нет запланированных смен</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!selectedEmployeeForShifts && (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">Выберите сотрудника для просмотра смен</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -730,6 +944,92 @@ export default function HRDashboard() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Shift Dialog */}
+      <Dialog open={isEditShiftDialogOpen} onOpenChange={setIsEditShiftDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Редактировать смену</DialogTitle>
+            <DialogDescription>Измените дату или время смены</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="editDate">Дата</Label>
+              <Input
+                id="editDate"
+                type="date"
+                value={editingShift?.date || ""}
+                onChange={(e) => setEditingShift({ ...editingShift, date: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="editStartTime">Время начала</Label>
+                <Select
+                  value={editingShift?.startTime || ""}
+                  onValueChange={(value) => setEditingShift({ ...editingShift, startTime: value })}
+                >
+                  <SelectTrigger id="editStartTime">
+                    <SelectValue placeholder="Выберите время" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {generateTimeOptions().map((time) => (
+                      <SelectItem key={`edit-start-${time}`} value={time}>
+                        {time}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="editEndTime">Время окончания</Label>
+                <Select
+                  value={editingShift?.endTime || ""}
+                  onValueChange={(value) => setEditingShift({ ...editingShift, endTime: value })}
+                >
+                  <SelectTrigger id="editEndTime">
+                    <SelectValue placeholder="Выберите время" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {generateTimeOptions().map((time) => (
+                      <SelectItem key={`edit-end-${time}`} value={time}>
+                        {time}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditShiftDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleEditShift}>Сохранить изменения</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Shift Dialog */}
+      <Dialog open={isDeleteShiftDialogOpen} onOpenChange={setIsDeleteShiftDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Удалить смену</DialogTitle>
+            <DialogDescription>
+              Вы уверены, что хотите удалить смену на{" "}
+              {deletingShift && new Date(deletingShift.date).toLocaleDateString("ru-RU")}? Это действие нельзя отменить.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteShiftDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteShift}>
+              Удалить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

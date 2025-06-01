@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarIcon, User, LogOut, Timer } from "lucide-react"
+import { CalendarIcon, User, LogOut, Timer, Trash2 } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Dialog,
@@ -762,7 +762,7 @@ const formatDate = (date: Date): string => {
                                 setIsDeleteDialogOpen(true)
                               }}
                             >
-                              🗑
+                              <Trash2 className="w-4 h-4 mr-2" />
                             </Button>
                           </div>
                         </div>
