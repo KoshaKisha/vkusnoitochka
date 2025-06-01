@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
+import { useRouter } from "next/navigation"
 import {
   Popover,
   PopoverTrigger,
@@ -48,6 +49,7 @@ export default function HRDashboard() {
   const [totalEmployees, setTotalEmployees] = useState(0)
   const [newThisMonth, setNewThisMonth] = useState(0)
   const [hourStats, setHourStats] = useState<{ currentMonthHours: number; difference: number } | null>(null)
+  const router = useRouter()
   const fetchEmployees = async () => {
   try {
     const res = await fetch("/api/hr/employees")
@@ -62,7 +64,23 @@ export default function HRDashboard() {
   const fetchAll = async () => {
     const token = localStorage.getItem("token")
     if (token) setToken(token)
+    if (!token) {
+      router.replace("/")
+      return
+    }
 
+    // Проверка роли из токена
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]))
+      if (payload.role !== "hr") {
+        router.replace("/unauthorized")
+        return
+      }
+    } catch (err) {
+      console.error("Ошибка при декодировании токена", err)
+      router.replace("/")
+      return
+    }
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 

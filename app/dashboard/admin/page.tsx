@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -36,6 +37,7 @@ export default function AdminDashboard() {
   const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false)
   const [isEditEmployeeDialogOpen, setIsEditEmployeeDialogOpen] = useState(false)
   const [profile, setProfile] = useState<{ id: number; firstName: string; lastName: string; email: string } | null>(null)
+  const router = useRouter()
   const [newEmployee, setNewEmployee] = useState({
     firstName: "",
     lastName: "",
@@ -61,7 +63,23 @@ export default function AdminDashboard() {
     const storedToken = localStorage.getItem("token")
     if (storedToken) {
       setToken(storedToken)
+    if (!storedToken) {
+      router.replace("/")
+      return
+    }
 
+    // Проверка роли из токена
+    try {
+      const payload = JSON.parse(atob(storedToken.split(".")[1]))
+      if (payload.role !== "admin") {
+        router.replace("/unauthorized")
+        return
+      }
+    } catch (err) {
+      console.error("Ошибка при декодировании токена", err)
+      router.replace("/")
+      return
+    }
       try {
         const [profileRes, employeesRes] = await Promise.all([
           fetch("/api/profile", {

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FileText, Download, Calendar, Users, Clock, TrendingUp, ArrowLeft, Filter, Search } from "lucide-react"
+import { FileText, Download, ArrowLeft } from "lucide-react"
 
 export default function ReportsPage() {
   type Report = {
@@ -26,43 +26,53 @@ export default function ReportsPage() {
   const [userId, setUserId] = useState<number | null>(null)
   const router = useRouter()
   useEffect(() => {
+  const init = async () => {
     const token = localStorage.getItem("token")
     if (!token) {
       router.replace("/")
       return
     }
 
-    const payload = JSON.parse(atob(token.split(".")[1]))
-    if (payload.role !== "hr") {
-      router.replace("/unauthorized")
-    }
-  }, [])
-  useEffect(() => {
-  async function fetchReports() {
-    const token = localStorage.getItem("token")
-    if (!token) return console.log("Нет токена")
-
-    const res = await fetch("/api/auth/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    if (!res.ok) {
-      console.log("Пользователь не аутентифицирован")
+    // Проверка роли из токена
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]))
+      if (payload.role !== "hr") {
+        router.replace("/unauthorized")
+        return
+      }
+    } catch (err) {
+      console.error("Ошибка при декодировании токена", err)
+      router.replace("/")
       return
     }
 
-    const { id } = await res.json()
-    setUserId(id)
+    // Загрузка профиля и отчетов
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
 
-    const reportsRes = await fetch(`/api/hr/reports/user/${id}`)
-    const reports = await reportsRes.json()
-    setGeneratedReports(reports)
+      if (!res.ok) {
+        console.log("Пользователь не аутентифицирован")
+        return
+      }
+
+      const { id } = await res.json()
+      setUserId(id)
+
+      const reportsRes = await fetch(`/api/hr/reports/user/${id}`)
+      const reports = await reportsRes.json()
+      setGeneratedReports(reports)
+    } catch (error) {
+      console.error("Ошибка при загрузке отчетов:", error)
+    }
   }
 
-  fetchReports()
+  init()
 }, [])
+
 
  const handleGenerateReport = async () => {
   if (!dateFrom || !dateTo || !userId) return

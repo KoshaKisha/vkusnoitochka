@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CalendarIcon, User, LogOut, Timer } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
@@ -20,6 +21,7 @@ import { Label } from "@/components/ui/label"
 import { useEffect } from "react"
 import { Input } from "@/components/ui/input"
 
+
 type ScheduleFromAPI = {
   id: number
   date: string
@@ -34,6 +36,7 @@ export default function EmployeeDashboard() {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
+  const router = useRouter()
   const [requestForm, setRequestForm] = useState({
     type: "vacation" as "vacation" | "sick" | "other",
     startDate: undefined as Date | undefined,
@@ -98,7 +101,23 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token")
-      if (!token) return
+      if (!token) {
+      router.replace("/")
+      return
+    }
+
+    // Проверка роли из токена
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]))
+      if (payload.role !== "employee") {
+        router.replace("/unauthorized")
+        return
+      }
+    } catch (err) {
+      console.error("Ошибка при декодировании токена", err)
+      router.replace("/")
+      return
+    }
 
       const res = await fetch("/api/profile", {
         headers: {
