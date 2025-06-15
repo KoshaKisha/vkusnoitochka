@@ -3,6 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'vkusno i tochka',
+  description: "Удобное приложение для сотрудников разных должностей",
   icons: {
     icon: "/burger.png",
   },
