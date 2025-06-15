@@ -47,8 +47,7 @@ export async function POST(req: NextRequest) {
     const filePath = `/reports/${fileName}`
     const absolutePath = join(process.cwd(), "public", "reports", fileName)
 
-    await writeFile(absolutePath, csvContent)
-
+    await writeFile(absolutePath, '\uFEFF' + csvContent, 'utf-8')
     const report = await prisma.report.create({
       data: {
         name: reportName,
