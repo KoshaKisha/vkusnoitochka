@@ -36,6 +36,7 @@ export default function EmployeeDashboard() {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
+  const [shiftError, setShiftError] = useState("")
   const router = useRouter()
   const [requestForm, setRequestForm] = useState({
     type: "vacation" as "vacation" | "sick" | "other",
@@ -45,7 +46,7 @@ export default function EmployeeDashboard() {
   })
   const requestTypeMap: Record<string, string> = {
     vacation: "отпуск",
-    sick: "больничный",
+    sick: "отгул",
     other: "другое",
   }
   const [requestError, setRequestError] = useState("")
@@ -55,9 +56,6 @@ export default function EmployeeDashboard() {
     firstName: "",
     lastName: "",
     email: "",
-    // oldPassword: "",
-    // newPassword: "",
-    // confirmPassword: "",
   })
   const [passwordError, setPasswordError] = useState("")
   const [shifts, setShifts] = useState<{
@@ -212,25 +210,37 @@ const formatDate = (date: Date): string => {
 
   const formattedDate = formatDate(newShift.date)
 
+  // Проверка: смена на этот день уже существует
+  if (shifts[formattedDate]) {
+    setShiftError("Смена на этот день уже существует")
+    return
+  }
+
+  // Вычисление продолжительности смены
+  const [startHour, startMinute] = newShift.startTime.split(":").map(Number)
+  const [endHour, endMinute] = newShift.endTime.split(":").map(Number)
+  const hours = endHour - startHour + (endMinute - startMinute) / 60
+
+  // Проверка: смена не должна превышать 9 часов
+  if (hours > 9) {
+    setShiftError("Смена не может быть длиннее 9 часов")
+    return
+  }
+
   const res = await fetch("/api/schedules", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  },
-   body: JSON.stringify({
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
       date: formattedDate,
       startTime: newShift.startTime,
-      endTime: newShift.endTime, }),
+      endTime: newShift.endTime,
+    }),
   })
 
   if (res.ok) {
-    const shift = await res.json()
-
-    const [startHour, startMinute] = newShift.startTime.split(":").map(Number)
-    const [endHour, endMinute] = newShift.endTime.split(":").map(Number)
-    const hours = endHour - startHour + (endMinute - startMinute) / 60
-
     setShifts({
       ...shifts,
       [formattedDate]: {
@@ -239,12 +249,13 @@ const formatDate = (date: Date): string => {
         hours,
       },
     })
+    setIsDialogOpen(false)
+    setShiftError("")
   } else {
-    console.error("Ошибка при добавлении смены")
+    setShiftError("Ошибка при добавлении смены")
   }
-
-  setIsDialogOpen(false)
 }
+
   // Get minimum date based on request type
   const getMinDate = () => {
     const today = new Date()
@@ -274,6 +285,10 @@ const formatDate = (date: Date): string => {
     const days = Math.ceil(durationInMs / (1000 * 60 * 60 * 24)) + 1 // +1, чтобы включать обе даты
     if (requestForm.type === "vacation" && days > 28) {
       setRequestError("Продолжительность отпуска не может превышать 28 дней")
+      return false
+    }
+    if (requestForm.type === "sick" && days > 14) {
+      setRequestError("Продолжительность отгула не может превышать 14 дней")
       return false
     }
     if (requestForm.type === "other" && !requestForm.comment.trim()) {
@@ -324,6 +339,7 @@ const formatDate = (date: Date): string => {
         ...newShift,
         date: date,
       })
+      setShiftError("")
       setIsDialogOpen(true)
     }
   }
@@ -427,7 +443,11 @@ const formatDate = (date: Date): string => {
                       selected={date}
                       onSelect={handleDateSelect}
                       className="rounded-md border"
-                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      disabled={(date) => {
+                        const today = new Date()
+                        today.setHours(0, 0, 0, 0)
+                        return date <= today
+                      }}
                       modifiers={{
                         hasShift: (date) => hasShift(date),
                       }}
@@ -573,51 +593,6 @@ const formatDate = (date: Date): string => {
                             placeholder="Введите email"
                           />
                         </div>
-
-                        {/* <div className="border-t pt-4">
-                          <h3 className="font-medium mb-3">Изменить пароль</h3>
-
-                          <div className="flex flex-col gap-2 mb-3">
-                            <Label htmlFor="oldPassword">Текущий пароль</Label>
-                            <Input
-                              id="oldPassword"
-                              type="password"
-                              value={editForm.oldPassword}
-                              onChange={(e) => setEditForm({ ...editForm, oldPassword: e.target.value })}
-                              placeholder="Введите текущий пароль"
-                            />
-                          </div>
-
-                          <div className="flex flex-col gap-2 mb-3">
-                            <Label htmlFor="newPassword">Новый пароль</Label>
-                            <Input
-                              id="newPassword"
-                              type="password"
-                              value={editForm.newPassword}
-                              onChange={(e) => {
-                                setEditForm({ ...editForm, newPassword: e.target.value })
-                                setPasswordError("")
-                              }}
-                              placeholder="Введите новый пароль"
-                            />
-                          </div>
-
-                          <div className="flex flex-col gap-2 mb-3">
-                            <Label htmlFor="confirmPassword">Подтвердите новый пароль</Label>
-                            <Input
-                              id="confirmPassword"
-                              type="password"
-                              value={editForm.confirmPassword}
-                              onChange={(e) => {
-                                setEditForm({ ...editForm, confirmPassword: e.target.value })
-                                setPasswordError("")
-                              }}
-                              placeholder="Повторите новый пароль"
-                            />
-                          </div>
-
-                          {passwordError && <p className="text-sm text-red-600 mb-3">{passwordError}</p>}
-                        </div> */}
                       </div>
 
                       <div className="flex gap-3">
@@ -634,39 +609,12 @@ const formatDate = (date: Date): string => {
                         <Button
                           className="flex-1"
                           onClick={async () => {
-                            // Validate passwords if they are being changed
-                            // if (editForm.newPassword || editForm.confirmPassword || editForm.oldPassword) {
-                            //   if (!editForm.oldPassword) {
-                            //     setPasswordError("Введите текущий пароль")
-                            //     return
-                            //   }
-                            //   if (!editForm.newPassword) {
-                            //     setPasswordError("Введите новый пароль")
-                            //     return
-                            //   }
-                            //   if (editForm.newPassword !== editForm.confirmPassword) {
-                            //     setPasswordError("Новые пароли не совпадают")
-                            //     return
-                            //   }
-                            //   if (editForm.newPassword.length < 6) {
-                            //     setPasswordError("Новый пароль должен содержать минимум 6 символов")
-                            //     return
-                            //   }
-                            // }
-
                             try {
                               const updateData: any = {
                                 firstName: editForm.firstName,
                                 lastName: editForm.lastName,
                                 email: editForm.email,
                               }
-
-                              // Only include password fields if user is changing password
-                              // if (editForm.oldPassword && editForm.newPassword) {
-                              //   updateData.oldPassword = editForm.oldPassword
-                              //   updateData.newPassword = editForm.newPassword
-                              // }
-
                               const res = await fetch("/api/profile", {
                                 method: "PUT",
                                 headers: {
@@ -777,7 +725,10 @@ const formatDate = (date: Date): string => {
       </div>
 
       {/* Shift Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open)
+          if (!open) setShiftError("")
+        }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Добавить смену</DialogTitle>
@@ -825,6 +776,7 @@ const formatDate = (date: Date): string => {
               </div>
             </div>
           </div>
+          {shiftError && <p className="text-sm text-red-600">{shiftError}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Отмена
@@ -861,7 +813,7 @@ const formatDate = (date: Date): string => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="vacation">Отпуск</SelectItem>
-                  <SelectItem value="sick">Больничный</SelectItem>
+                  <SelectItem value="sick">Отгул</SelectItem>
                   <SelectItem value="other">Другое</SelectItem>
                 </SelectContent>
               </Select>
@@ -924,7 +876,7 @@ const formatDate = (date: Date): string => {
                 <p className="text-sm font-medium">Сводка заявки:</p>
                 <p className="text-sm text-muted-foreground">
                   Тип:{" "}
-                  {requestForm.type === "vacation" ? "Отпуск" : requestForm.type === "sick" ? "Больничный" : "Другое"}
+                  {requestForm.type === "vacation" ? "Отпуск" : requestForm.type === "sick" ? "Отгул" : "Другое"}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Период: {requestForm.startDate.toLocaleDateString("ru-RU")} -{" "}

@@ -178,7 +178,7 @@ export default function HRDashboard() {
   })
   const requestTypeMap: Record<string, string> = {
     vacation: "отпуск",
-    sick: "больничный",
+    sick: "отгул",
     other: "другое",
   }
   
