@@ -574,7 +574,7 @@ const formatDate = (date: Date): string => {
                           />
                         </div>
 
-                        <div className="border-t pt-4">
+                        {/* <div className="border-t pt-4">
                           <h3 className="font-medium mb-3">Изменить пароль</h3>
 
                           <div className="flex flex-col gap-2 mb-3">
@@ -617,7 +617,7 @@ const formatDate = (date: Date): string => {
                           </div>
 
                           {passwordError && <p className="text-sm text-red-600 mb-3">{passwordError}</p>}
-                        </div>
+                        </div> */}
                       </div>
 
                       <div className="flex gap-3">
