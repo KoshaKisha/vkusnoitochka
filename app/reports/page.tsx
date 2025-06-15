@@ -86,17 +86,39 @@ export default function ReportsPage() {
       type: reportType,
       dateFrom,
       dateTo,
-      createdBy: userId,
     }),
   })
 
   if (res.ok) {
-    const newReport = await res.json()
-    setGeneratedReports((prev) => [newReport, ...prev])
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+
+    // 🔽 Получаем имя файла из заголовка Content-Disposition
+    const contentDisposition = res.headers.get("Content-Disposition")
+    let fileName = "report.csv"
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="(.+)"/)
+      if (match?.[1]) {
+        fileName = match[1]
+      }
+    }
+
+    const a = document.createElement("a")
+    a.href = url
+    a.download = fileName
+    a.click()
+
+    URL.revokeObjectURL(url)
+
+    // Обновить список отчетов, если нужно
+    const reportsRes = await fetch(`/api/hr/reports/user/${userId}`)
+    const updatedReports = await reportsRes.json()
+    setGeneratedReports(updatedReports)
   } else {
     alert("Не удалось сгенерировать отчет")
   }
 }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -200,10 +222,7 @@ export default function ReportsPage() {
                           <div>Создан: {new Date(report.createdAt).toLocaleString()}</div>
                         </div>
                         <div className="flex space-x-2">
-                          <a
-                            href={report.filePath}
-                            download={report.name.replaceAll(" ", "_") + ".csv"}
-                          >
+                          <a href={`/api/hr/reports/${report.id}/download`}>
                             <Button size="sm">
                               <Download className="w-4 h-4 mr-2" />
                               Скачать

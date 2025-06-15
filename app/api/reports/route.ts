@@ -1,64 +1,44 @@
-import { writeFile } from "fs/promises"
-import { prisma } from "@/lib/prisma"
 import { NextRequest, NextResponse } from "next/server"
-import { join } from "path"
 import { format } from "date-fns"
-import { getWorkHoursCSV,  getOvertimeCSV, getVacationCSV } from "@/lib/reportGenerator"
+import { getWorkHoursCSV, getOvertimeCSV, getVacationCSV } from "@/lib/reportGenerator"
 
 export async function POST(req: NextRequest) {
   try {
-    const { type, dateFrom, dateTo, createdBy } = await req.json()
+    const { type, dateFrom, dateTo } = await req.json()
 
     const from = new Date(dateFrom)
     const to = new Date(dateTo)
 
     let csvContent = ""
-    let reportName = ""
-    let filePrefix = ""
-    let description = ""
+    let fileName = ""
 
     switch (type) {
       case "time":
         csvContent = await getWorkHoursCSV(from, to)
-        reportName = `Отчет по рабочему времени за ${format(from, "dd.MM.yyyy")} - ${format(to, "dd.MM.yyyy")}`
-        filePrefix = "workhours"
-        description = "Автоматически сгенерированный отчет по рабочему времени"
+        fileName = `workhours_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`
         break
-
       case "overtime":
         csvContent = await getOvertimeCSV(from, to)
-        reportName = `Отчет по переработкам за ${format(from, "dd.MM.yyyy")} - ${format(to, "dd.MM.yyyy")}`
-        filePrefix = "overtime"
-        description = "Автоматически сгенерированный отчет по переработкам"
+        fileName = `overtime_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`
         break
-
       case "vacation":
         csvContent = await getVacationCSV()
-        reportName = `Отчет по отпускам`
-        filePrefix = "vacation"
-        description = "Автоматически сгенерированный отчет по отпускам"
+        fileName = `vacation_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`
         break
-
       default:
         return NextResponse.json({ error: "Неизвестный тип отчета" }, { status: 400 })
     }
 
-    const fileName = `report_${filePrefix}_${format(new Date(), "yyyyMMdd_HHmmss")}.csv`
-    const filePath = `/reports/${fileName}`
-    const absolutePath = join(process.cwd(), "public", "reports", fileName)
+    // Добавляем BOM и отдаем файл
+    const utf8WithBom = '\uFEFF' + csvContent
 
-    await writeFile(absolutePath, '\uFEFF' + csvContent, 'utf-8')
-    const report = await prisma.report.create({
-      data: {
-        name: reportName,
-        type,
-        description,
-        filePath,
-        createdBy,
+    return new NextResponse(utf8WithBom, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${fileName}"`,
       },
     })
-
-    return NextResponse.json(report)
   } catch (error) {
     console.error("Ошибка генерации отчета:", error)
     return NextResponse.json({ error: "Ошибка генерации отчета" }, { status: 500 })
