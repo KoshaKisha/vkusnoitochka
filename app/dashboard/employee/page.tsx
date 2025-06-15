@@ -55,9 +55,9 @@ export default function EmployeeDashboard() {
     firstName: "",
     lastName: "",
     email: "",
-    oldPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+    // oldPassword: "",
+    // newPassword: "",
+    // confirmPassword: "",
   })
   const [passwordError, setPasswordError] = useState("")
   const [shifts, setShifts] = useState<{
@@ -527,9 +527,9 @@ const formatDate = (date: Date): string => {
                               firstName: profile.firstName,
                               lastName: profile.lastName,
                               email: profile.email,
-                              oldPassword: "",
-                              newPassword: "",
-                              confirmPassword: "",
+                              // oldPassword: "",
+                              // newPassword: "",
+                              // confirmPassword: "",
                             })
                             setIsEditingProfile(true)
                             setPasswordError("")
@@ -635,24 +635,24 @@ const formatDate = (date: Date): string => {
                           className="flex-1"
                           onClick={async () => {
                             // Validate passwords if they are being changed
-                            if (editForm.newPassword || editForm.confirmPassword || editForm.oldPassword) {
-                              if (!editForm.oldPassword) {
-                                setPasswordError("Введите текущий пароль")
-                                return
-                              }
-                              if (!editForm.newPassword) {
-                                setPasswordError("Введите новый пароль")
-                                return
-                              }
-                              if (editForm.newPassword !== editForm.confirmPassword) {
-                                setPasswordError("Новые пароли не совпадают")
-                                return
-                              }
-                              if (editForm.newPassword.length < 6) {
-                                setPasswordError("Новый пароль должен содержать минимум 6 символов")
-                                return
-                              }
-                            }
+                            // if (editForm.newPassword || editForm.confirmPassword || editForm.oldPassword) {
+                            //   if (!editForm.oldPassword) {
+                            //     setPasswordError("Введите текущий пароль")
+                            //     return
+                            //   }
+                            //   if (!editForm.newPassword) {
+                            //     setPasswordError("Введите новый пароль")
+                            //     return
+                            //   }
+                            //   if (editForm.newPassword !== editForm.confirmPassword) {
+                            //     setPasswordError("Новые пароли не совпадают")
+                            //     return
+                            //   }
+                            //   if (editForm.newPassword.length < 6) {
+                            //     setPasswordError("Новый пароль должен содержать минимум 6 символов")
+                            //     return
+                            //   }
+                            // }
 
                             try {
                               const updateData: any = {
@@ -662,10 +662,10 @@ const formatDate = (date: Date): string => {
                               }
 
                               // Only include password fields if user is changing password
-                              if (editForm.oldPassword && editForm.newPassword) {
-                                updateData.oldPassword = editForm.oldPassword
-                                updateData.newPassword = editForm.newPassword
-                              }
+                              // if (editForm.oldPassword && editForm.newPassword) {
+                              //   updateData.oldPassword = editForm.oldPassword
+                              //   updateData.newPassword = editForm.newPassword
+                              // }
 
                               const res = await fetch("/api/profile", {
                                 method: "PUT",
