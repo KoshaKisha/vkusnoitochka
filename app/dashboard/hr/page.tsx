@@ -485,21 +485,6 @@ export default function HRDashboard() {
                     </PopoverTrigger>
                     <PopoverContent className="w-64 space-y-4">
                       <div>
-                        <Label className="block text-sm mb-1">Фильтр по роли</Label>
-                        <Select value={selectedRole} onValueChange={setSelectedRole}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Выберите роль" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Все</SelectItem>
-                            <SelectItem value="employee">Сотрудник</SelectItem>
-                            <SelectItem value="hr">HR</SelectItem>
-                            <SelectItem value="admin">Админ</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
                         <Label className="block text-sm mb-1">Фильтр по статусу</Label>
                         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                           <SelectTrigger>
