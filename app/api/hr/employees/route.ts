@@ -8,6 +8,9 @@ export async function GET() {
 
   try {
     const employees = await prisma.employee.findMany({
+      where: {
+        role: "employee",
+      },
       include: {
         schedules: {
           where: {
@@ -22,7 +25,6 @@ export async function GET() {
         },
       },
     })
-
     const today = new Date()
 
     const result = employees.map((employee) => {
