@@ -1,12 +1,15 @@
 "use client"
 
 import { useState } from "react"
+import { format } from "date-fns"
+import { ru } from "date-fns/locale"
+import { Calendar as CalendarIcon } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarIcon, User, LogOut, Timer, Trash2 } from "lucide-react"
+import { User, LogOut, Timer, Trash2 } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Dialog,
@@ -20,6 +23,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { useEffect } from "react"
 import { Input } from "@/components/ui/input"
+import { Popover } from "@radix-ui/react-popover"
+import { PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 
 type ScheduleFromAPI = {
@@ -652,13 +657,13 @@ const formatDate = (date: Date): string => {
           <TabsContent value="requests">
             <Card>
               <CardHeader>
-                <CardTitle>Мои заявки</CardTitle>
-                <CardDescription>Заявки на отпуск, больничные и другие запросы</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">Мои заявки</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Заявки на отпуск, больничные и другие запросы</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <Button
-                    className="w-full md:w-auto"
+                    className="w-full md:w-auto text-xs sm:text-sm h-8 sm:h-9"
                     onClick={() => {
                       setIsRequestDialogOpen(true)
                       setRequestForm({
@@ -670,31 +675,42 @@ const formatDate = (date: Date): string => {
                       setRequestError("")
                     }}
                   >
-                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    <CalendarIcon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                     Подать заявку
                   </Button>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {requests.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Нет активных заявок</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground py-2 sm:py-3 text-center">Нет активных заявок</p>
                     ) : (
                       requests.map((request) => (
-                        <div key={request.id} className="border rounded-lg p-4 flex justify-between items-start">
-                          <div>
-                            <p className="font-medium">Заявка на {requestTypeMap[request.type] || "Неизвестно"}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(request.startDate).toLocaleDateString("ru-RU")} - {new Date(request.endDate).toLocaleDateString("ru-RU")}
+                        <div 
+                          key={request.id} 
+                          className="border rounded-lg p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium text-sm sm:text-base">
+                              Заявка на {requestTypeMap[request.type] || "Неизвестно"}
                             </p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">
+                              {new Date(request.startDate).toLocaleDateString("ru-RU")} -{" "}
+                              {new Date(request.endDate).toLocaleDateString("ru-RU")}
+                            </p>
+                            {request.comment && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Комментарий: {request.comment}
+                              </p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
-                           <Badge
-                              className={
+                          <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-auto justify-between sm:justify-normal">
+                            <Badge
+                              className={`text-xs ${
                                 request.status === "approved"
                                   ? "bg-green-100 text-green-800"
                                   : request.status === "rejected"
                                   ? "bg-red-100 text-red-800"
                                   : "bg-gray-100 text-gray-800"
-                              }
+                              }`}
                             >
                               {request.status === "approved"
                                 ? "Одобрено"
@@ -704,13 +720,14 @@ const formatDate = (date: Date): string => {
                             </Badge>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm"
+                              className="h-7 sm:h-8 w-7 sm:w-8 p-0 sm:p-2"
                               onClick={() => {
                                 setSelectedRequestId(request.id)
                                 setIsDeleteDialogOpen(true)
                               }}
                             >
-                              <Trash2 className="w-4 h-4 mr-2" />
+                              <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                             </Button>
                           </div>
                         </div>
@@ -785,158 +802,183 @@ const formatDate = (date: Date): string => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-     {/* Request Dialog */}
-      <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-        <DialogContent className="sm:max-w-[650px]">
-          <DialogHeader>
-            <DialogTitle>Подать заявку</DialogTitle>
-            <DialogDescription>Заполните форму для подачи заявки</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="requestType">Тип заявки</Label>
-              <Select
-                value={requestForm.type}
-                onValueChange={(value: "vacation" | "sick" | "other") => {
-                  setRequestForm({
-                    ...requestForm,
-                    type: value,
-                    startDate: undefined,
-                    endDate: undefined,
-                    comment: "",
-                  })
-                  setRequestError("")
-                }}
+    {/* Request Dialog */}
+      {/* Request Dialog - Compact Version */}
+<Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+  <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
+    <DialogHeader className="sticky top-0 bg-background z-10 pb-2">
+      <DialogTitle className="text-lg">Подать заявку</DialogTitle>
+      <DialogDescription className="text-sm">Заполните форму для подачи заявки</DialogDescription>
+    </DialogHeader>
+    
+    <div className="grid gap-3">
+      <div className="flex flex-col gap-1">
+        <Label className="text-sm">Тип заявки</Label>
+        <Select
+          value={requestForm.type}
+          onValueChange={(value: "vacation" | "sick" | "other") => {
+            setRequestForm({
+              ...requestForm,
+              type: value,
+              startDate: undefined,
+              endDate: undefined,
+              comment: "",
+            })
+            setRequestError("")
+          }}
+        >
+          <SelectTrigger className="h-8">
+            <SelectValue placeholder="Выберите тип"/>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="vacation">Отпуск</SelectItem>
+            <SelectItem value="sick">Отгул</SelectItem>
+            <SelectItem value="other">Другое</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid gap-3">
+        <div className="flex flex-col gap-1">
+          <Label className="text-sm">Дата начала</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-8 justify-start text-left font-normal"
               >
-                <SelectTrigger id="requestType">
-                  <SelectValue placeholder="Выберите тип заявки" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="vacation">Отпуск</SelectItem>
-                  <SelectItem value="sick">Отгул</SelectItem>
-                  <SelectItem value="other">Другое</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {requestForm.startDate ? (
+                  format(requestForm.startDate, "PPP", { locale: ru })
+                ) : (
+                  <span>Выберите дату</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={requestForm.startDate}
+                onSelect={(date) => setRequestForm({...requestForm, startDate: date})}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label>Дата начала</Label>
-                <Calendar
-                  mode="single"
-                  selected={requestForm.startDate}
-                  onSelect={(date) => {
-                    setRequestForm({ ...requestForm, startDate: date })
-                    setRequestError("")
-                  }}
-                  disabled={(date) => date < getMinDate()}
-                  className="rounded-md border"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label>Дата окончания</Label>
-                <Calendar
-                  mode="single"
-                  selected={requestForm.endDate}
-                  onSelect={(date) => {
-                    setRequestForm({ ...requestForm, endDate: date })
-                    setRequestError("")
-                  }}
-                  disabled={(date) => {
-                    if (!requestForm.startDate) return date < getMinDate()
-                    return date < requestForm.startDate
-                  }}
-                  className="rounded-md border"
-                />
-              </div>
-            </div>
+        <div className="flex flex-col gap-1">
+          <Label className="text-sm">Дата окончания</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-8 justify-start text-left font-normal"
+                disabled={!requestForm.startDate}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {requestForm.endDate ? (
+                  format(requestForm.endDate, "PPP", { locale: ru })
+                ) : (
+                  <span>Выберите дату</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={requestForm.endDate}
+                onSelect={(date) => setRequestForm({...requestForm, endDate: date})}
+                disabled={(date) => date < (requestForm.startDate || new Date())}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
 
-            {requestForm.type === "other" && (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="comment">Комментарий</Label>
-                <textarea
-                  id="comment"
-                  className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Укажите причину заявки..."
-                  value={requestForm.comment}
-                  onChange={(e) => {
-                    if (e.target.value.length <= 300) {
-                      setRequestForm({ ...requestForm, comment: e.target.value })
-                      setRequestError("")
-                    }
-                  }}
-                  maxLength={300}
-                />
-                <div className="text-xs text-muted-foreground text-right">{requestForm.comment.length}/300</div>
-              </div>
-            )}
-
-            {requestForm.startDate && requestForm.endDate && (
-              <div className="bg-muted p-3 rounded-md">
-                <p className="text-sm font-medium">Сводка заявки:</p>
-                <p className="text-sm text-muted-foreground">
-                  Тип:{" "}
-                  {requestForm.type === "vacation" ? "Отпуск" : requestForm.type === "sick" ? "Отгул" : "Другое"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Период: {requestForm.startDate.toLocaleDateString("ru-RU")} -{" "}
-                  {requestForm.endDate.toLocaleDateString("ru-RU")}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Количество дней:{" "}
-                  {Math.ceil(
-                    (requestForm.endDate.getTime() - requestForm.startDate.getTime()) / (1000 * 60 * 60 * 24),
-                  ) + 1}
-                </p>
-              </div>
-            )}
-
-            {requestError && <p className="text-sm text-red-600">{requestError}</p>}
+      {requestForm.type === "other" && (
+        <div className="flex flex-col gap-1">
+          <Label className="text-sm">Комментарий</Label>
+          <textarea
+            className="min-h-[80px] w-full rounded-md border p-2 text-sm"
+            placeholder="Укажите причину..."
+            value={requestForm.comment}
+            onChange={(e) => setRequestForm({...requestForm, comment: e.target.value})}
+            maxLength={300}
+          />
+          <div className="text-xs text-muted-foreground text-right">
+            {requestForm.comment.length}/300
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsRequestDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleSubmitRequest}>Подать заявку</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Удалить заявку?</DialogTitle>
-            <DialogDescription>
-              Вы уверены, что хотите удалить эту заявку? Это действие нельзя отменить.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={async () => {
-                if (!selectedRequestId) return
+        </div>
+      )}
 
-                const res = await fetch(`/api/requests?id=${selectedRequestId}`, {
-                  method: "DELETE",
-                  headers: { Authorization: `Bearer ${token}` },
-                })
+      {requestError && (
+        <div className="text-sm text-red-600">{requestError}</div>
+      )}
+    </div>
 
-                if (res.ok) {
-                  setIsDeleteDialogOpen(false)
-                  setSelectedRequestId(null)
-                  fetchRequests()
-                } else {
-                  console.error("Ошибка при удалении заявки")
-                }
-              }}
-            >
-              Удалить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+    <DialogFooter className="sticky bottom-0 bg-background pt-2">
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          className="h-8 flex-1"
+          onClick={() => setIsRequestDialogOpen(false)}
+        >
+          Отмена
+        </Button>
+        <Button
+          className="h-8 flex-1"
+          onClick={handleSubmitRequest}
+        >
+          Подать
+        </Button>
+      </div>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
+{/* Delete Dialog */}
+<Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+  <DialogContent className="max-w-[95vw] sm:max-w-[400px]">
+    <DialogHeader>
+      <DialogTitle className="text-lg sm:text-xl">Удалить заявку?</DialogTitle>
+      <DialogDescription className="text-xs sm:text-sm">
+        Вы уверены, что хотите удалить эту заявку? Это действие нельзя отменить.
+      </DialogDescription>
+    </DialogHeader>
+    <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+      <Button 
+        variant="outline" 
+        onClick={() => setIsDeleteDialogOpen(false)}
+        className="w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm"
+      >
+        Отмена
+      </Button>
+      <Button
+        variant="destructive"
+        onClick={async () => {
+          if (!selectedRequestId) return
+
+          const res = await fetch(`/api/requests?id=${selectedRequestId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          })
+
+          if (res.ok) {
+            setIsDeleteDialogOpen(false)
+            setSelectedRequestId(null)
+            fetchRequests()
+          } else {
+            console.error("Ошибка при удалении заявки")
+          }
+        }}
+        className="w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm"
+      >
+        Удалить
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
     </div>
   )
 }
