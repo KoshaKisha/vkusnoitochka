@@ -87,7 +87,7 @@ export default function AdminDashboard() {
               Authorization: `Bearer ${storedToken}`,
             },
           }),
-          fetch("/api/hr/employees"),
+          fetch("/api/admin/employees"),
         ])
 
         if (profileRes.ok) {
