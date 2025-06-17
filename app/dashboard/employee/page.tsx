@@ -802,140 +802,138 @@ const formatDate = (date: Date): string => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    {/* Request Dialog */}
-      {/* Request Dialog - Compact Version */}
-<Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-  <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
-    <DialogHeader className="sticky top-0 bg-background z-10 pb-2">
-      <DialogTitle className="text-lg">Подать заявку</DialogTitle>
-      <DialogDescription className="text-sm">Заполните форму для подачи заявки</DialogDescription>
-    </DialogHeader>
-    
-    <div className="grid gap-3">
-      <div className="flex flex-col gap-1">
-        <Label className="text-sm">Тип заявки</Label>
-        <Select
-          value={requestForm.type}
-          onValueChange={(value: "vacation" | "sick" | "other") => {
-            setRequestForm({
-              ...requestForm,
-              type: value,
-              startDate: undefined,
-              endDate: undefined,
-              comment: "",
-            })
-            setRequestError("")
-          }}
-        >
-          <SelectTrigger className="h-8">
-            <SelectValue placeholder="Выберите тип"/>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="vacation">Отпуск</SelectItem>
-            <SelectItem value="sick">Отгул</SelectItem>
-            <SelectItem value="other">Другое</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="grid gap-3">
-        <div className="flex flex-col gap-1">
-          <Label className="text-sm">Дата начала</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-8 justify-start text-left font-normal"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {requestForm.startDate ? (
-                  format(requestForm.startDate, "PPP", { locale: ru })
-                ) : (
-                  <span>Выберите дату</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={requestForm.startDate}
-                onSelect={(date) => setRequestForm({...requestForm, startDate: date})}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label className="text-sm">Дата окончания</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-8 justify-start text-left font-normal"
-                disabled={!requestForm.startDate}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {requestForm.endDate ? (
-                  format(requestForm.endDate, "PPP", { locale: ru })
-                ) : (
-                  <span>Выберите дату</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={requestForm.endDate}
-                onSelect={(date) => setRequestForm({...requestForm, endDate: date})}
-                disabled={(date) => date < (requestForm.startDate || new Date())}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-
-      {requestForm.type === "other" && (
-        <div className="flex flex-col gap-1">
-          <Label className="text-sm">Комментарий</Label>
-          <textarea
-            className="min-h-[80px] w-full rounded-md border p-2 text-sm"
-            placeholder="Укажите причину..."
-            value={requestForm.comment}
-            onChange={(e) => setRequestForm({...requestForm, comment: e.target.value})}
-            maxLength={300}
-          />
-          <div className="text-xs text-muted-foreground text-right">
-            {requestForm.comment.length}/300
+        {/* Request Dialog */}
+          {/* Request Dialog - Compact Version */}
+    <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+      <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-background z-10 pb-2">
+          <DialogTitle className="text-lg">Подать заявку</DialogTitle>
+          <DialogDescription className="text-sm">Заполните форму для подачи заявки</DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid gap-3">
+          <div className="flex flex-col gap-1">
+            <Label className="text-sm">Тип заявки</Label>
+            <Select
+              value={requestForm.type}
+              onValueChange={(value: "vacation" | "sick" | "other") => {
+                setRequestForm({
+                  ...requestForm,
+                  type: value,
+                  startDate: undefined,
+                  endDate: undefined,
+                  comment: "",
+                })
+                setRequestError("")
+              }}
+            >
+              <SelectTrigger className="h-8">
+                <SelectValue placeholder="Выберите тип"/>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="vacation">Отпуск</SelectItem>
+                <SelectItem value="sick">Отгул</SelectItem>
+                <SelectItem value="other">Другое</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          <div className="grid gap-3">
+            <div className="flex flex-col gap-1">
+              <Label className="text-sm">Дата начала</Label>
+              <Popover modal>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-8 justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {requestForm.startDate ? (
+                      format(requestForm.startDate, "PPP", { locale: ru })
+                    ) : (
+                      <span>Выберите дату</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 z-50">
+                  <Calendar
+                    mode="single"
+                    selected={requestForm.startDate}
+                    onSelect={(date) => setRequestForm({ ...requestForm, startDate: date })}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <Label className="text-sm">Дата окончания</Label>
+              <Popover modal>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-8 justify-start text-left font-normal"
+                    disabled={!requestForm.startDate}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {requestForm.endDate ? (
+                      format(requestForm.endDate, "PPP", { locale: ru })
+                    ) : (
+                      <span>Выберите дату</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 z-50">
+                  <Calendar
+                    mode="single"
+                    selected={requestForm.endDate}
+                    onSelect={(date) => setRequestForm({ ...requestForm, endDate: date })}
+                    disabled={(date) => date < (requestForm.startDate || new Date())}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {requestForm.type === "other" && (
+            <div className="flex flex-col gap-1">
+              <Label className="text-sm">Комментарий</Label>
+              <textarea
+                className="min-h-[80px] w-full rounded-md border p-2 text-sm"
+                placeholder="Укажите причину..."
+                value={requestForm.comment}
+                onChange={(e) => setRequestForm({...requestForm, comment: e.target.value})}
+                maxLength={300}
+              />
+              <div className="text-xs text-muted-foreground text-right">
+                {requestForm.comment.length}/300
+              </div>
+            </div>
+          )}
+
+          {requestError && (
+            <div className="text-sm text-red-600">{requestError}</div>
+          )}
         </div>
-      )}
 
-      {requestError && (
-        <div className="text-sm text-red-600">{requestError}</div>
-      )}
-    </div>
-
-    <DialogFooter className="sticky bottom-0 bg-background pt-2">
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          className="h-8 flex-1"
-          onClick={() => setIsRequestDialogOpen(false)}
-        >
-          Отмена
-        </Button>
-        <Button
-          className="h-8 flex-1"
-          onClick={handleSubmitRequest}
-        >
-          Подать
-        </Button>
-      </div>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+        <DialogFooter className="sticky bottom-0 bg-background pt-2">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="h-8 flex-1"
+              onClick={() => setIsRequestDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button
+              className="h-8 flex-1"
+              onClick={handleSubmitRequest}
+            >
+              Подать
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
 {/* Delete Dialog */}
 <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
