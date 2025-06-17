@@ -328,441 +328,173 @@ const handleCreateEmployee = async () => {
     setIsEditEmployeeDialogOpen(true)
   }
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Users className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">Панель администратора</h1>
-                <p className="text-sm text-gray-500">
-                  Добро пожаловать,{" "}
-                  {profile
-                    ? `${profile.lastName} ${profile.firstName.charAt(0)}.`
-                    : "пользователь"}
+  <div className="min-h-screen bg-gray-50">
+    {/* Header */}
+    <header className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
+          <div className="flex items-center space-x-4">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Users className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">Панель администратора</h1>
+              <p className="text-sm text-gray-500">
+                Добро пожаловать, {profile ? `${profile.lastName} ${profile.firstName.charAt(0)}.` : "пользователь"}
               </p>
-              </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                localStorage.removeItem("token")
-                window.location.href = "/"
-              }}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Выйти
-            </Button>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              localStorage.removeItem("token");
+              window.location.href = "/";
+            }}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Выйти
+          </Button>
         </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Main Content */}
-        <Tabs defaultValue="employees" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-1">
-            <TabsTrigger value="employees">Сотрудники</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="employees" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>Управление сотрудниками</CardTitle>
-                    <CardDescription>Список всех сотрудников и их информация</CardDescription>
-                  </div>
-                  <Button
-                    onClick={() => {
-                      setIsAddEmployeeDialogOpen(true)
-                      setNewEmployee({
-                        firstName: "",
-                        lastName: "",
-                        email: "",
-                        role: "employee",
-                        password: "",
-                        confirmPassword: "",
-                      })
-                      setEmployeeError("")
-                    }}
-                  >
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Добавить сотрудника
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex space-x-4 mb-6">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      placeholder="Поиск сотрудников..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline">
-                        <Filter className="w-4 h-4 mr-2" />
-                        Фильтры
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 space-y-4">
-                      <div>
-                        <Label className="block text-sm mb-1">Фильтр по роли</Label>
-                        <Select value={selectedRole} onValueChange={setSelectedRole}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Выберите роль" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Все</SelectItem>
-                            <SelectItem value="employee">Сотрудник</SelectItem>
-                            <SelectItem value="hr">HR</SelectItem>
-                            <SelectItem value="admin">Админ</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex justify-between">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedRole("all")
-                          }}
-                        >
-                          Сбросить
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-4">
-                  {filteredEmployees.map((employee) => (
-                    <div
-                      key={employee.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div
-                          className={`w-12 h-12 ${getRoleBackgroundColor(employee.role)} rounded-full flex items-center justify-center`}
-                        >
-                          {getRoleIcon(employee.role)}
-                        </div>
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <p className="font-medium text-lg">{employee.firstName} {employee.lastName}</p>
-                            <Badge variant="outline" className="text-xs">
-                              {employee.role === "employee"
-                                ? "Сотрудник"
-                                : employee.role === "hr"
-                                  ? "HR"
-                                  : "Админ"}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{employee.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <Button variant="outline" size="sm" onClick={() => openEditDialog(employee)}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Редактировать
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {filteredEmployees.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Сотрудники не найдены</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
+    </header>
 
-      {/* Add Employee Dialog */}
-      <Dialog open={isAddEmployeeDialogOpen} onOpenChange={setIsAddEmployeeDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Добавить нового сотрудника</DialogTitle>
-            <DialogDescription>Заполните информацию о новом сотруднике</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="firstName">Имя</Label>
-                <Input
-                  id="firstName"
-                  value={newEmployee.firstName}
-                  onChange={(e) => {
-                    setNewEmployee({ ...newEmployee, firstName: e.target.value })
-                    setEmployeeError("")
-                  }}
-                  placeholder="Введите имя"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="lastName">Фамилия</Label>
-                <Input
-                  id="lastName"
-                  value={newEmployee.lastName}
-                  onChange={(e) => {
-                    setNewEmployee({ ...newEmployee, lastName: e.target.value })
-                    setEmployeeError("")
-                  }}
-                  placeholder="Введите фамилию"
-                />
-              </div>
-            </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Tabs defaultValue="employees" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-1">
+          <TabsTrigger value="employees">Сотрудники</TabsTrigger>
+        </TabsList>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={newEmployee.email}
-                onChange={(e) => {
-                  setNewEmployee({ ...newEmployee, email: e.target.value })
-                  setEmployeeError("")
-                }}
-                placeholder="Введите email"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="role">Роль в системе</Label>
-              <Select
-                value={newEmployee.role}
-                onValueChange={(value: "employee" | "hr" | "admin") => {
-                  setNewEmployee({ ...newEmployee, role: value })
-                  setEmployeeError("")
-                }}
-              >
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Выберите роль" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="employee">
-                    <div className="flex items-center space-x-2">
-                      <User className="w-4 h-4 text-green-600" />
-                      <span>Сотрудник</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="hr">
-                    <div className="flex items-center space-x-2">
-                      <Users className="w-4 h-4 text-purple-600" />
-                      <span>HR-менеджер</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="admin">
-                    <div className="flex items-center space-x-2">
-                      <Crown className="w-4 h-4 text-orange-600" />
-                      <span>Администратор</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="password">Пароль</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={newEmployee.password}
-                  onChange={(e) => {
-                    setNewEmployee({ ...newEmployee, password: e.target.value })
-                    setEmployeeError("")
-                  }}
-                  placeholder="Введите пароль"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={newEmployee.confirmPassword}
-                  onChange={(e) => {
-                    setNewEmployee({ ...newEmployee, confirmPassword: e.target.value })
-                    setEmployeeError("")
-                  }}
-                  placeholder="Повторите пароль"
-                />
-              </div>
-            </div>
-
-            {employeeError && <p className="text-sm text-red-600">{employeeError}</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddEmployeeDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleCreateEmployee}>Создать сотрудника</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Employee Dialog */}
-      <Dialog open={isEditEmployeeDialogOpen} onOpenChange={setIsEditEmployeeDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Редактировать сотрудника</DialogTitle>
-            <DialogDescription>Измените информацию о сотруднике</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="editFirstName">Имя</Label>
-                <Input
-                  id="editFirstName"
-                  value={editEmployee.firstName}
-                  onChange={(e) => {
-                    setEditEmployee({ ...editEmployee, firstName: e.target.value })
-                    setEditEmployeeError("")
-                  }}
-                  placeholder="Введите имя"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="editLastName">Фамилия</Label>
-                <Input
-                  id="editLastName"
-                  value={editEmployee.lastName}
-                  onChange={(e) => {
-                    setEditEmployee({ ...editEmployee, lastName: e.target.value })
-                    setEditEmployeeError("")
-                  }}
-                  placeholder="Введите фамилию"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="editEmail">Email</Label>
-              <Input
-                id="editEmail"
-                type="email"
-                value={editEmployee.email}
-                onChange={(e) => {
-                  setEditEmployee({ ...editEmployee, email: e.target.value })
-                  setEditEmployeeError("")
-                }}
-                placeholder="Введите email"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="editRole">Роль в системе</Label>
-              <Select
-                value={editEmployee.role}
-                onValueChange={(value: "employee" | "hr" | "admin") => {
-                  setEditEmployee({ ...editEmployee, role: value })
-                  setEditEmployeeError("")
-                }}
-              >
-                <SelectTrigger id="editRole">
-                  <SelectValue placeholder="Выберите роль" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="employee">
-                    <div className="flex items-center space-x-2">
-                      <User className="w-4 h-4 text-green-600" />
-                      <span>Сотрудник</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="hr">
-                    <div className="flex items-center space-x-2">
-                      <Users className="w-4 h-4 text-purple-600" />
-                      <span>HR-менеджер</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="admin">
-                    <div className="flex items-center space-x-2">
-                      <Crown className="w-4 h-4 text-orange-600" />
-                      <span>Администратор</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="border-t pt-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <input
-                  type="checkbox"
-                  id="changePassword"
-                  checked={editEmployee.changePassword}
-                  onChange={(e) => {
-                    setEditEmployee({
-                      ...editEmployee,
-                      changePassword: e.target.checked,
-                      newPassword: "",
+        <TabsContent value="employees" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div>
+                  <CardTitle>Управление сотрудниками</CardTitle>
+                  <CardDescription>Список всех сотрудников и их информация</CardDescription>
+                </div>
+                <Button
+                  onClick={() => {
+                    setIsAddEmployeeDialogOpen(true);
+                    setNewEmployee({
+                      firstName: "",
+                      lastName: "",
+                      email: "",
+                      role: "employee",
+                      password: "",
                       confirmPassword: "",
-                    })
-                    setEditEmployeeError("")
+                    });
+                    setEmployeeError("");
                   }}
-                  className="rounded"
-                />
-                <Label htmlFor="changePassword">Изменить пароль</Label>
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Добавить сотрудника
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent>
+              <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Поиск сотрудников..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-full"
+                  />
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full md:w-auto">
+                      <Filter className="w-4 h-4 mr-2" />
+                      Фильтры
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 space-y-4">
+                    <div>
+                      <Label className="block text-sm mb-1">Фильтр по роли</Label>
+                      <Select value={selectedRole} onValueChange={setSelectedRole}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Выберите роль" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Все</SelectItem>
+                          <SelectItem value="employee">Сотрудник</SelectItem>
+                          <SelectItem value="hr">HR</SelectItem>
+                          <SelectItem value="admin">Админ</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedRole("all");
+                        }}
+                      >
+                        Сбросить
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              {editEmployee.changePassword && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="editNewPassword">Новый пароль</Label>
-                    <Input
-                      id="editNewPassword"
-                      type="password"
-                      value={editEmployee.newPassword}
-                      onChange={(e) => {
-                        setEditEmployee({ ...editEmployee, newPassword: e.target.value })
-                        setEditEmployeeError("")
-                      }}
-                      placeholder="Введите новый пароль"
-                    />
+              <div className="space-y-4">
+                {filteredEmployees.map((employee) => (
+                  <div
+                    key={employee.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors gap-4"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div
+                        className={`w-12 h-12 ${getRoleBackgroundColor(employee.role)} rounded-full flex items-center justify-center`}
+                      >
+                        {getRoleIcon(employee.role)}
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <p className="font-medium text-lg">
+                            {employee.firstName} {employee.lastName}
+                          </p>
+                          <Badge variant="outline" className="text-xs">
+                            {employee.role === "employee"
+                              ? "Сотрудник"
+                              : employee.role === "hr"
+                              ? "HR"
+                              : "Админ"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground break-all">
+                          {employee.email}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap justify-end sm:justify-start gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditDialog(employee)}
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Редактировать
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="editConfirmPassword">Подтвердите пароль</Label>
-                    <Input
-                      id="editConfirmPassword"
-                      type="password"
-                      value={editEmployee.confirmPassword}
-                      onChange={(e) => {
-                        setEditEmployee({ ...editEmployee, confirmPassword: e.target.value })
-                        setEditEmployeeError("")
-                      }}
-                      placeholder="Повторите новый пароль"
-                    />
-                  </div>
+                ))}
+              </div>
+
+              {filteredEmployees.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Сотрудники не найдены</p>
                 </div>
               )}
-            </div>
-
-            {editEmployeeError && <p className="text-sm text-red-600">{editEmployeeError}</p>}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditEmployeeDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleEditEmployee}>Сохранить изменения</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
-  )
+  </div>
+);
 }
